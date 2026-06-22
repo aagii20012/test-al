@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Paper trading bot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+<style>
+  :root{
+    --ground:#0F1822; --panel:#16222E; --panel-2:#1C2C3A;
+    --ink:#EAF1F7; --muted:#8AA0B2; --line:#26384A;
+    --up:#3DD68C; --down:#FF6B6B; --accent:#5AB0FF;
+    --mono:"SFMono-Regular",ui-monospace,"Cascadia Code",Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+       line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:860px;margin:0 auto;padding:24px 18px 60px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;
+         border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:8px;}
+  h1{font-size:1.05rem;font-weight:650;margin:0;letter-spacing:.2px;}
+  h1 .sub{color:var(--muted);font-weight:400;}
+  .status{font-size:.82rem;font-weight:600;padding:5px 11px;border-radius:999px;white-space:nowrap;}
+  .status.run{background:rgba(61,214,140,.14);color:var(--up);}
+  .status.pause{background:rgba(255,196,84,.16);color:#FFC454;}
+  .status.stop{background:rgba(255,107,107,.16);color:var(--down);}
+  .updated{color:var(--muted);font-size:.8rem;margin:6px 0 26px;}
+
+  .hero{margin:18px 0 26px;}
+  .hero .label{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.14em;}
+  .hero .money{font-family:var(--mono);font-size:3.1rem;font-weight:600;line-height:1.05;margin:4px 0 2px;}
+  .hero .delta{font-family:var(--mono);font-size:1.05rem;font-weight:600;}
+  .hero .start{color:var(--muted);font-size:.85rem;margin-top:2px;}
+  .up{color:var(--up);} .down{color:var(--down);} .flat{color:var(--muted);}
+
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 6px;margin-bottom:22px;}
+  canvas{width:100%;height:200px;display:block;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px;}
+  .card .k{color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+  .card .v{font-family:var(--mono);font-size:1.25rem;font-weight:600;}
+  .card .v small{font-size:.8rem;color:var(--muted);font-weight:400;}
+
+  h2{font-size:.95rem;font-weight:600;margin:0 0 10px;}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;}
+  th,td{text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:var(--muted);font-weight:500;font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;}
+  td{font-family:var(--mono);}
+  .scroll{overflow-x:auto;}
+  .empty{color:var(--muted);background:var(--panel);border:1px dashed var(--line);
+         border-radius:12px;padding:26px;text-align:center;}
+  footer{color:var(--muted);font-size:.78rem;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;}
+  .reload{color:var(--accent);cursor:pointer;text-decoration:underline;background:none;border:none;font:inherit;padding:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Momentum paper bot <span class="sub">· BTC · hourly</span></h1>
+    <span id="status" class="status pause">loading…</span>
+  </header>
+  <div class="updated" id="updated">Reading the bot's latest state…</div>
+
+  <div id="content" style="display:none">
+    <div class="hero">
+      <div class="label">Your money (pretend)</div>
+      <div class="money" id="equity">—</div>
+      <div class="delta" id="delta">—</div>
+      <div class="start" id="start"></div>
+    </div>
+
+    <div class="chartcard"><canvas id="chart"></canvas></div>
+
+    <div class="cards">
+      <div class="card"><div class="k">Right now</div><div class="v" id="position">—</div></div>
+      <div class="card"><div class="k">Biggest dip so far</div><div class="v" id="dd">—</div></div>
+      <div class="card"><div class="k">Trades closed</div><div class="v" id="ntrades">—</div></div>
+      <div class="card"><div class="k">Fees paid</div><div class="v" id="fees">—</div></div>
+    </div>
+
+    <h2>Recent trades</h2>
+    <div id="trades"></div>
+  </div>
+
+  <div id="empty" class="empty" style="display:none">
+    No data yet. The bot writes its first state after its first hourly run finishes —
+    check back in a bit, or run the workflow once from the <b>Actions</b> tab.
+  </div>
+
+  <footer>
+    Real BTC prices, simulated fills — a paper run, not real money.
+    Updates each hour automatically. <button class="reload" onclick="load()">refresh now</button>
+  </footer>
+</div>
+
+<script>
+// Where the bot saves its state (relative to this page on GitHub Pages).
+const STATE_PATH = "state/momentum_BTCUSDT_sim.json";
+
+const $ = id => document.getElementById(id);
+const money = n => "$" + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const ago = iso => {
+  if(!iso) return "";
+  const s = Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
+  if(s<90) return "just now";
+  if(s<5400) return Math.round(s/60)+" min ago";
+  if(s<172800) return Math.round(s/3600)+" h ago";
+  return Math.round(s/86400)+" days ago";
+};
+
+async function load(){
+  let st;
+  try{
+    const r = await fetch(STATE_PATH + "?t=" + Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    st = await r.json();
+  }catch(e){
+    $("content").style.display="none";
+    $("empty").style.display="block";
+    $("updated").textContent="Couldn't read the bot's state file yet.";
+    $("status").className="status pause"; $("status").textContent="waiting";
+    return;
+  }
+  render(st);
+}
+
+function render(st){
+  const p = st.portfolio || {};
+  const risk = st.risk || {};
+  const curve = (p.equity_curve||[]);
+  const initial = p.initial_capital ?? 10000;
+  const equity = curve.length ? curve[curve.length-1].equity : (p.cash ?? initial);
+  const net = equity - initial;
+  const netPct = initial ? net/initial*100 : 0;
+
+  $("content").style.display="block";
+  $("empty").style.display="none";
+
+  // status
+  let cls="run", txt="Running";
+  if(risk.halted_permanent){cls="stop";txt="Stopped (safety kill-switch)";}
+  else if(risk.halted_today){cls="pause";txt="Paused for the day (hit its limit)";}
+  $("status").className="status "+cls; $("status").textContent=txt;
+  $("updated").textContent = "Last updated " + ago(st.updated_utc) +
+     " · checked " + (curve.length) + " price bars so far";
+
+  // hero
+  const dir = net>0.005?"up":(net<-0.005?"down":"flat");
+  $("equity").textContent = money(equity);
+  $("equity").className = "money "+dir;
+  const arrow = dir==="up"?"▲":(dir==="down"?"▼":"•");
+  $("delta").className = "delta "+dir;
+  $("delta").textContent = `${arrow} ${netPct>=0?"+":""}${netPct.toFixed(2)}%  (${net>=0?"+":"−"}${money(Math.abs(net)).slice(1)})`;
+  $("start").textContent = "started with " + money(initial);
+
+  // position (plain language)
+  const sym = Object.keys(p.positions||{})[0];
+  const qty = sym ? p.positions[sym] : 0;
+  let pos = "Holding nothing";
+  if(qty>1e-9) pos = qty.toFixed(4)+" BTC<br><small style='font-weight:400;color:var(--muted)'>betting it rises</small>";
+  else if(qty<-1e-9) pos = Math.abs(qty).toFixed(4)+" BTC short<br><small style='font-weight:400;color:var(--muted)'>betting it falls</small>";
+  $("position").innerHTML = pos;
+
+  // max drawdown from the curve
+  let peak=-Infinity, dd=0;
+  for(const r of curve){ peak=Math.max(peak,r.equity); if(peak>0) dd=Math.min(dd,(r.equity-peak)/peak); }
+  $("dd").textContent = (dd*100).toFixed(1)+"%";
+  $("dd").className = "v "+(dd<-0.0001?"down":"flat");
+
+  const trades = (p.trade_log||[]);
+  $("ntrades").textContent = trades.length;
+  const fees = (p.total_commission||0)+(p.total_slippage||0)+(p.total_financing||0);
+  $("fees").innerHTML = money(fees);
+
+  drawChart(curve, initial);
+  drawTrades(trades);
+}
+
+function drawTrades(trades){
+  if(!trades.length){ $("trades").innerHTML='<div class="empty">No closed trades yet — the bot only logs a trade when it closes a position.</div>'; return; }
+  const rows = trades.slice(-12).reverse().map(t=>{
+    const pnl = t.realized_pnl||0;
+    const cls = pnl>0?"up":(pnl<0?"down":"flat");
+    const d = (t.dt||"").slice(0,16).replace("T"," ");
+    return `<tr><td>${d}</td><td>${(t.side||"").toUpperCase()}</td><td>${(t.qty||0).toFixed(4)}</td>
+      <td>$${(t.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+      <td class="${cls}">${pnl>=0?"+":"−"}$${Math.abs(pnl).toFixed(2)}</td></tr>`;
+  }).join("");
+  $("trades").innerHTML = `<div class="scroll"><table>
+    <thead><tr><th>When (UTC)</th><th>Side</th><th>Size</th><th>Price</th><th>Profit</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function drawChart(curve, initial){
+  const cv = $("chart"), dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = 200;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  if(curve.length<2){
+    ctx.fillStyle="#8AA0B2"; ctx.font="13px system-ui"; ctx.textAlign="center";
+    ctx.fillText("Equity chart appears once there are a few hours of data.", W/2, H/2);
+    return;
+  }
+  const vals = curve.map(r=>r.equity);
+  let lo=Math.min(...vals,initial), hi=Math.max(...vals,initial);
+  const pad=(hi-lo)*0.12||1; lo-=pad; hi+=pad;
+  const x=i=>8+i*(W-16)/(curve.length-1);
+  const y=v=>H-12-(v-lo)/(hi-lo)*(H-24);
+
+  // baseline (starting money)
+  ctx.strokeStyle="#26384A"; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(8,y(initial)); ctx.lineTo(W-8,y(initial)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="#5C7186"; ctx.font="10px system-ui"; ctx.textAlign="left";
+  ctx.fillText("start", 10, y(initial)-4);
+
+  const last = vals[vals.length-1];
+  const col = last>=initial ? "#3DD68C" : "#FF6B6B";
+  // area fill
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, col+"33"); g.addColorStop(1, col+"00");
+  ctx.beginPath(); ctx.moveTo(x(0),y(vals[0]));
+  for(let i=1;i<vals.length;i++) ctx.lineTo(x(i),y(vals[i]));
+  ctx.lineTo(x(vals.length-1),H); ctx.lineTo(x(0),H); ctx.closePath();
+  ctx.fillStyle=g; ctx.fill();
+  // line
+  ctx.beginPath(); ctx.moveTo(x(0),y(vals[0]));
+  for(let i=1;i<vals.length;i++) ctx.lineTo(x(i),y(vals[i]));
+  ctx.strokeStyle=col; ctx.lineWidth=2; ctx.lineJoin="round"; ctx.stroke();
+  // last dot
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x(vals.length-1),y(last),3.5,0,7); ctx.fill();
+}
+
+load();
+setInterval(load, 5*60*1000);       // auto-refresh every 5 minutes
+window.addEventListener("resize", ()=>{ /* redraw chart on resize */ load(); });
+</script>
+</body>
+</html>
