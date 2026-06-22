@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Secrets & local data
+# Ignore every config*.yaml (may hold real keys) EXCEPT the safe committed ones.
+config/config*.yaml
+!config/config.example.yaml
+!config/config.ci.yaml
+data_cache/
+*.log
+*.csv
+!tests/**/*.csv

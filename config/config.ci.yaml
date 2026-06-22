@@ -1,0 +1,30 @@
+# Cloud / CI config — committed to the repo. CONTAINS NO SECRETS.
+# API keys are read from the BINANCE_API_KEY / BINANCE_API_SECRET environment
+# variables (set as GitHub Actions secrets). api_key/api_secret are left blank
+# on purpose so the env-var fallback is used.
+exchange: binance
+api_key: ""
+api_secret: ""
+
+testnet: true                # paper trading on Binance testnet (fake money)
+
+initial_capital: 10000       # testnet fake money — large enough to clear the
+                             # ~$10 minimum order size so trades actually place
+cache_dir: data_cache
+log_level: INFO
+
+financing_apr: 0.10          # borrow/funding rate on shorts (realistic carry)
+
+risk:
+  # Same realistic, capital-preservation-first plan as config.yaml.
+  atr_sizing: true
+  risk_per_trade: 0.01       # risk 1% of equity per trade
+  atr_stop_mult: 2.5
+  max_position_pct: 0.50
+  max_leverage: 1.0
+  stop_loss_pct: 0.05
+  use_stops: true
+  cash_buffer: 0.003
+  max_daily_loss_pct: 0.01     # GOAL 1: stop for the day after losing 1%
+  max_daily_profit_pct: 0.01   # bank the win once up 1%
+  max_drawdown_pct: 0.15       # permanent kill switch at 15% drawdown

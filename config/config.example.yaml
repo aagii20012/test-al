@@ -1,0 +1,27 @@
+# Copy this file to config/config.yaml and fill in your values.
+# config/config.yaml is gitignored — never commit real API keys.
+
+exchange: binance
+
+# Leave blank to fall back to BINANCE_API_KEY / BINANCE_API_SECRET env vars.
+api_key: ""
+api_secret: ""
+
+# Strongly recommended: keep true until you have validated your strategy.
+testnet: true
+
+initial_capital: 100000
+cache_dir: data_cache
+log_level: INFO
+
+# Yearly borrow/funding cost charged on short & leveraged positions (a "rental
+# fee" for borrowed capital). 0 = off (spot, buy-and-hold). 0.10 = 10%/yr, a
+# realistic crypto borrow rate. Applied automatically to every backtest.
+financing_apr: 0.10
+
+risk:
+  max_position_pct: 0.20    # at most 20% of equity in a single symbol
+  risk_per_trade: 0.10      # target 10% of equity per new position
+  max_leverage: 1.0         # 1.0 = no leverage (gross exposure <= equity)
+  stop_loss_pct: 0.05       # exit a position after a 5% adverse move
+  use_stops: true
