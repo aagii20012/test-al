@@ -36,13 +36,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run one trading tick (testnet)
-        env:
-          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+      - name: Run one trading tick (simulated, public prices)
         run: |
           python -m algotrading.cli --config config/config.ci.yaml \
-            tick --strategy momentum --interval 1h --symbols BTCUSDT
+            tick --simulated --strategy momentum --interval 1h --symbols BTCUSDT
 
       - name: Persist state back to the repo
         run: |

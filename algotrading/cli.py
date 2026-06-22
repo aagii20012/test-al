@@ -248,36 +248,54 @@ def cmd_tick(args, cfg):
     scheduler invokes this hourly. Full state (portfolio, risk, strategy) is
     checkpointed to a JSON between runs so behaviour is identical to the
     long-running live engine — it is the same event loop, one bar at a time.
+
+    Two modes:
+      * default  — trade on Binance (testnet/real) via the live handler.
+      * --simulated — read FREE public prices (Coinbase) and simulate fills
+        locally. No API key, and works from cloud IPs where Binance is
+        geo-blocked (e.g. GitHub Actions). Same strategy/risk/cost logic.
     """
     from .core.events import MarketEvent
     from .data.live import LiveDataHandler
     from .engine.loop import dispatch_pending
-    from .exchange.binance import BinanceExchange
-    from .execution.live import LiveExecutionHandler
 
-    if not cfg.api_key or not cfg.api_secret:
-        log.error("tick requires api_key/api_secret (set BINANCE_API_KEY / "
-                  "BINANCE_API_SECRET env vars or config).")
-        sys.exit(1)
-    if not cfg.testnet and not getattr(args, "i_understand_real_money", False):
-        log.error("testnet=false (REAL MONEY). Refusing to trade without "
-                  "--i-understand-real-money.")
-        sys.exit(1)
-
-    exchange = BinanceExchange(cfg.api_key, cfg.api_secret, testnet=cfg.testnet)
+    simulated = getattr(args, "simulated", False)
     events = EventQueue()
     ppy = _PERIODS_PER_YEAR.get(args.interval, 365 * 24)
-    # drop_forming: act on the last CLOSED bar, never a half-formed candle.
-    data = LiveDataHandler(events, exchange, args.symbols, interval=args.interval,
-                           history=500, drop_forming=True)
+
+    if simulated:
+        from .data.public import PublicMarketData
+        # Real public prices, fills simulated locally with realistic costs.
+        data = LiveDataHandler(events, PublicMarketData(), args.symbols,
+                               interval=args.interval, history=300, drop_forming=True)
+        execution = SimulatedExecutionHandler(
+            events, data, commission_pct=0.001, slippage_bps=2.0,
+            fill_at="close", min_notional=10.0)
+    else:
+        from .exchange.binance import BinanceExchange
+        from .execution.live import LiveExecutionHandler
+        if not cfg.api_key or not cfg.api_secret:
+            log.error("tick requires api_key/api_secret (set BINANCE_API_KEY / "
+                      "BINANCE_API_SECRET env vars or config), or use --simulated.")
+            sys.exit(1)
+        if not cfg.testnet and not getattr(args, "i_understand_real_money", False):
+            log.error("testnet=false (REAL MONEY). Refusing to trade without "
+                      "--i-understand-real-money.")
+            sys.exit(1)
+        exchange = BinanceExchange(cfg.api_key, cfg.api_secret, testnet=cfg.testnet)
+        # drop_forming: act on the last CLOSED bar, never a half-formed candle.
+        data = LiveDataHandler(events, exchange, args.symbols, interval=args.interval,
+                               history=500, drop_forming=True)
+        execution = LiveExecutionHandler(events, exchange)
+
     risk = _risk_from_config(cfg)
     portfolio = Portfolio(data, events, risk, initial_capital=cfg.initial_capital,
                           financing_apr=cfg.financing_apr, periods_per_year=ppy)
-    execution = LiveExecutionHandler(events, exchange)
     strategy = STRATEGIES[args.strategy](data, events, **_resolve_params(args.strategy, args.param))
 
+    suffix = "_sim" if simulated else ""
     state_path = args.state or os.path.join(
-        "state", f"{args.strategy}_{'_'.join(args.symbols)}.json")
+        "state", f"{args.strategy}_{'_'.join(args.symbols)}{suffix}.json")
     state = _load_tick_state(state_path)
     last_ts = 0
     if state:
@@ -435,6 +453,9 @@ def build_parser() -> argparse.ArgumentParser:
     ptk.add_argument("--param", nargs="*", help="strategy params, e.g. lookback=96 threshold=1.0")
     ptk.add_argument("--state", default=None,
                      help="state JSON path (default state/<strategy>_<symbols>.json)")
+    ptk.add_argument("--simulated", action="store_true",
+                     help="paper-simulate on free public prices (no API key, no "
+                          "Binance) — for cloud hosts where Binance is geo-blocked")
     ptk.add_argument("--i-understand-real-money", dest="i_understand_real_money",
                      action="store_true", help="required to trade with testnet=false")
 
