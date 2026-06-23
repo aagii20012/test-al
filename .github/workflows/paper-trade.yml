@@ -4,11 +4,14 @@ name: paper-trade
 # - schedule: hourly, a few minutes after the bar closes (GitHub cron is approximate)
 # - workflow_dispatch: lets you trigger a run by hand from the Actions tab
 on:
+  # GitHub's own scheduler heavily throttles quiet free repos (runs every few
+  # hours, not hourly). A free external cron (e.g. cron-job.org) pokes the
+  # repository_dispatch endpoint instead — those triggers fire IMMEDIATELY and
+  # are not throttled, giving reliable hourly runs. The schedule below stays as
+  # a free backup; workflow_dispatch lets you run it by hand.
+  repository_dispatch:
+    types: [tick]
   schedule:
-    # Twice an hour at off-peak minutes. GitHub's free scheduler is best-effort
-    # and heavily delays/skips runs at the top of the hour, so we avoid :00 and
-    # give two chances per hour to catch each closed 1h bar promptly. Extra runs
-    # that find no new bar exit cheaply ("nothing to do").
     - cron: "13,43 * * * *"
   workflow_dispatch: {}
 
