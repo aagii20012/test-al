@@ -266,8 +266,10 @@ def cmd_tick(args, cfg):
     if simulated:
         from .data.public import PublicMarketData
         # Real public prices, fills simulated locally with realistic costs.
+        # PublicMarketData already returns only CLOSED candles (decided by the
+        # clock), so we must NOT also drop the last row here.
         data = LiveDataHandler(events, PublicMarketData(), args.symbols,
-                               interval=args.interval, history=300, drop_forming=True)
+                               interval=args.interval, history=300, drop_forming=False)
         execution = SimulatedExecutionHandler(
             events, data, commission_pct=0.001, slippage_bps=2.0,
             fill_at="close", min_notional=10.0)

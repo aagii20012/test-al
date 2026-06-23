@@ -11,6 +11,8 @@ simulated locally by SimulatedExecutionHandler. No API key, no geo-block.
 
 from __future__ import annotations
 
+import time
+
 import pandas as pd
 
 from ..utils.logger import get_logger
@@ -61,4 +63,13 @@ class PublicMarketData:
         df = pd.DataFrame(rows, columns=["time", "low", "high", "open", "close", "volume"])
         df["dt"] = pd.to_datetime(df["time"], unit="s", utc=True)
         df = df.set_index("dt").sort_index()
-        return df[["open", "high", "low", "close", "volume"]].astype(float).tail(limit)
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+
+        # Keep only CLOSED candles, decided by the clock — not by position.
+        # Coinbase may not have created the current bucket yet (low volume), so
+        # "the last row is the forming one" is unreliable and can drop a bar that
+        # actually just closed. A candle that opened at t is closed once
+        # t + interval <= now.
+        open_epoch = df.index.astype("int64") // 1_000_000_000
+        df = df[open_epoch + gran <= time.time()]
+        return df.tail(limit)
