@@ -5,7 +5,11 @@ name: paper-trade
 # - workflow_dispatch: lets you trigger a run by hand from the Actions tab
 on:
   schedule:
-    - cron: "5 * * * *"
+    # Twice an hour at off-peak minutes. GitHub's free scheduler is best-effort
+    # and heavily delays/skips runs at the top of the hour, so we avoid :00 and
+    # give two chances per hour to catch each closed 1h bar promptly. Extra runs
+    # that find no new bar exit cheaply ("nothing to do").
+    - cron: "13,43 * * * *"
   workflow_dispatch: {}
 
 # Allow the job to commit the updated state file back to the repo.
