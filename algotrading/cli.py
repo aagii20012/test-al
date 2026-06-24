@@ -348,6 +348,12 @@ def cmd_tick(args, cfg):
         "strategy": strategy.dump_state(),
         "last_bar_ts": latest_ts,
         "updated_utc": datetime.now(timezone.utc).isoformat(),
+        # True equity AFTER the fill applied (the equity_curve point is marked a
+        # step earlier, pre-fill), plus the latest price so the dashboard can
+        # value open positions. Lets the UI show fees/P&L immediately.
+        "equity_now": portfolio.equity,
+        "cash_now": portfolio.cash,
+        "last_price": latest.close,
     })
     log.info("Tick done. equity=%.2f position(%s)=%.6f -> state saved to %s",
              portfolio.equity, primary, portfolio.position(primary), state_path)

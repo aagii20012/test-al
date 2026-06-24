@@ -81,7 +81,10 @@
       <div class="card"><div class="k">Fees paid</div><div class="v" id="fees">—</div></div>
     </div>
 
-    <h2>Recent trades</h2>
+    <h2>Open position</h2>
+    <div id="openpos"></div>
+
+    <h2>Closed trades</h2>
     <div id="trades"></div>
   </div>
 
@@ -132,7 +135,10 @@ function render(st){
   const risk = st.risk || {};
   const curve = (p.equity_curve||[]);
   const initial = p.initial_capital ?? 10000;
-  const equity = curve.length ? curve[curve.length-1].equity : (p.cash ?? initial);
+  // Prefer the true post-trade equity (the curve point is marked a step before
+  // the fill, so it can lag the fees/position by one bar).
+  const equity = (st.equity_now != null) ? st.equity_now
+                 : (curve.length ? curve[curve.length-1].equity : (p.cash ?? initial));
   const net = equity - initial;
   const netPct = initial ? net/initial*100 : 0;
 
@@ -175,7 +181,31 @@ function render(st){
   const fees = (p.total_commission||0)+(p.total_slippage||0)+(p.total_financing||0);
   $("fees").innerHTML = money(fees);
 
-  drawChart(curve, initial);
+  // Open position shown as a live transaction with unrealized P&L.
+  const osym = Object.keys(p.positions||{}).find(k => Math.abs(p.positions[k])>1e-9);
+  if(osym){
+    const q = p.positions[osym];
+    const entry = (p.avg_price||{})[osym] || 0;
+    const now = st.last_price || entry;
+    const unreal = q*(now-entry);                 // signed qty: short profits when price falls
+    const side = q>0 ? "LONG (betting it rises)" : "SHORT (betting it falls)";
+    const cl = unreal>0?"up":(unreal<0?"down":"flat");
+    $("openpos").innerHTML = `<div class="scroll"><table>
+      <thead><tr><th>Side</th><th>Size</th><th>Entered at</th><th>Price now</th><th>Profit so far</th></tr></thead>
+      <tbody><tr><td>${side}</td><td>${Math.abs(q).toFixed(4)} BTC</td>
+        <td>$${entry.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td>$${now.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+        <td class="${cl}">${unreal>=0?"+":"−"}$${Math.abs(unreal).toFixed(2)}</td></tr></tbody></table></div>`;
+  } else {
+    $("openpos").innerHTML = `<div class="empty">Flat — no open position right now (all in cash).</div>`;
+  }
+
+  // Correct the chart's last point to the true equity so it matches the hero.
+  const curveForChart = curve.slice();
+  if(st.equity_now != null && curveForChart.length){
+    curveForChart[curveForChart.length-1] = {...curveForChart[curveForChart.length-1], equity: st.equity_now};
+  }
+  drawChart(curveForChart, initial);
   drawTrades(trades);
 }
 
