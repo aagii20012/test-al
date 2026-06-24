@@ -1,12 +1,16 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 10000.0,
-    "positions": {},
-    "avg_price": {},
+    "cash": 12318.008208240726,
+    "positions": {
+      "BTCUSDT": -0.03805713664267975
+    },
+    "avg_price": {
+      "BTCUSDT": 60969.60364
+    },
     "realized_pnl": 0.0,
-    "total_commission": 0.0,
-    "total_slippage": 0.0,
+    "total_commission": 2.3203285367775046,
+    "total_slippage": 0.4641585390633795,
     "total_financing": 0.0,
     "equity_curve": [
       {
@@ -200,12 +204,26 @@
         "cash": 10000.0,
         "market_value": 0,
         "equity": 10000.0
+      },
+      {
+        "dt": "2026-06-24T15:00:00+00:00",
+        "cash": 10000.0,
+        "market_value": 0,
+        "equity": 10000.0
       }
     ],
     "trade_log": []
   },
   "risk": {
-    "open": {},
+    "open": {
+      "BTCUSDT": {
+        "entry": 60981.8,
+        "dir": -1,
+        "stop": 62029.94464285715,
+        "take": null,
+        "extreme": 60981.8
+      }
+    },
     "peak_equity": 10000.0,
     "day": "2026-06-24",
     "day_start_equity": 10000.0,
@@ -214,9 +232,9 @@
   },
   "strategy": {
     "pos": {
-      "BTCUSDT": 0
+      "BTCUSDT": -1
     }
   },
-  "last_bar_ts": 1782306000000,
-  "updated_utc": "2026-06-24T13:53:26.654638+00:00"
+  "last_bar_ts": 1782313200000,
+  "updated_utc": "2026-06-24T15:00:57.475871+00:00"
 }
