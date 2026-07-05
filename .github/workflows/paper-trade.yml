@@ -43,10 +43,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run one trading tick (simulated, public prices)
+      - name: Run one trading tick per strategy × coin (simulated, public prices)
+        # A paper bake-off across every strategy AND coin. Each (strategy, coin)
+        # pair is an independent bot with its own separate money and its own
+        # state file (state/<strategy>_<coin>_sim.json) — they never collide.
+        # `|| true` keeps one bot's error from skipping the rest of the grid.
         run: |
-          python -m algotrading.cli --config config/config.ci.yaml \
-            tick --simulated --strategy momentum --interval 1h --symbols BTCUSDT
+          for coin in BTCUSDT ETHUSDT; do
+            for strat in momentum rsi donchian bollinger; do
+              echo "=== tick: $strat on $coin ==="
+              python -m algotrading.cli --config config/config.ci.yaml \
+                tick --simulated --strategy "$strat" --interval 1h --symbols "$coin" || true
+            done
+          done
 
       - name: Persist state back to the repo
         run: |

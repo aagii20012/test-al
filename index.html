@@ -54,17 +54,35 @@
          border-radius:12px;padding:26px;text-align:center;}
   footer{color:var(--muted);font-size:.78rem;margin-top:30px;border-top:1px solid var(--line);padding-top:14px;}
   .reload{color:var(--accent);cursor:pointer;text-decoration:underline;background:none;border:none;font:inherit;padding:0;}
+  #board table tr{cursor:pointer;}
+  #board table tbody tr:hover{background:var(--panel-2);}
+  #board tr.sel{background:rgba(90,176,255,.12);}
+  #board tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
+  .rank{color:var(--muted);}
+  .badge{font-size:.72rem;padding:2px 7px;border-radius:999px;white-space:nowrap;}
+  .badge.run{background:rgba(61,214,140,.14);color:var(--up);}
+  .badge.pause{background:rgba(255,196,84,.16);color:#FFC454;}
+  .badge.stop{background:rgba(255,107,107,.16);color:var(--down);}
+  .chip{font:inherit;font-size:.82rem;cursor:pointer;padding:5px 13px;border-radius:999px;
+        background:var(--panel);color:var(--muted);border:1px solid var(--line);}
+  .chip:hover{color:var(--ink);}
+  .chip.on{background:rgba(90,176,255,.14);color:var(--accent);border-color:var(--accent);}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Momentum paper bot <span class="sub">· BTC · hourly</span></h1>
+    <h1>Strategy bake-off <span class="sub">· BTC &amp; ETH · hourly</span></h1>
     <span id="status" class="status pause">loading…</span>
   </header>
-  <div class="updated" id="updated">Reading the bot's latest state…</div>
+  <div class="updated" id="updated">Reading the bots' latest state…</div>
+
+  <h2 style="margin-top:18px">Leaderboard <span style="color:var(--muted);font-weight:400;font-size:.82rem">· each bot trades its own pretend money · tap one to see details</span></h2>
+  <div id="filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <div id="board" class="scroll" style="margin-bottom:26px"></div>
 
   <div id="content" style="display:none">
+    <h2 id="detail-title">Details</h2>
     <div class="hero">
       <div class="label">Your money (pretend)</div>
       <div class="money" id="equity">—</div>
@@ -94,14 +112,34 @@
   </div>
 
   <footer>
-    Real BTC prices, simulated fills — a paper run, not real money.
+    Real crypto prices, simulated fills — a paper run, not real money.
     Updates each hour automatically. <button class="reload" onclick="load()">refresh now</button>
   </footer>
 </div>
 
 <script>
-// Where the bot saves its state (relative to this page on GitHub Pages).
-const STATE_PATH = "state/momentum_BTCUSDT_sim.json";
+// The strategies × coins competing in the bake-off. Every (strategy, coin) pair
+// is an independent bot with its own state file (state/<strategy>_<coin>_sim.json)
+// — the workflow ticks all of them hourly.
+const STRATEGIES = [
+  {key:"momentum",  label:"Momentum",  blurb:"rides trends up"},
+  {key:"rsi",       label:"RSI",       blurb:"buys the dip, sells the bounce"},
+  {key:"donchian",  label:"Donchian",  blurb:"buys fresh breakouts"},
+  {key:"bollinger", label:"Bollinger", blurb:"fades big stretches from average"},
+];
+const COINS = [
+  {sym:"BTCUSDT", label:"BTC"},
+  {sym:"ETHUSDT", label:"ETH"},
+];
+// A "cell" is one bot: a strategy on a coin. id = "strategy|coin".
+const CELLS = [];
+for(const c of COINS) for(const s of STRATEGIES)
+  CELLS.push({id:`${s.key}|${c.sym}`, strat:s, coin:c,
+              path:`state/${s.key}_${c.sym}_sim.json`});
+
+let STATES = {};       // id -> parsed state (only the ones that loaded)
+let selected = null;   // currently drilled-into bot id
+let coinFilter = "";   // "" = all coins, else a coin symbol
 
 const $ = id => document.getElementById(id);
 const money = n => "$" + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -114,20 +152,113 @@ const ago = iso => {
   return Math.round(s/86400)+" days ago";
 };
 
+// Pull the headline numbers out of one strategy's state for the leaderboard.
+function summarize(st){
+  const p = st.portfolio || {}, risk = st.risk || {};
+  const curve = p.equity_curve || [];
+  const initial = p.initial_capital ?? 100;
+  const equity = (st.equity_now != null) ? st.equity_now
+                 : (curve.length ? curve[curve.length-1].equity : (p.cash ?? initial));
+  const netPct = initial ? (equity-initial)/initial*100 : 0;
+  const sym = Object.keys(p.positions||{}).find(k => Math.abs(p.positions[k])>1e-9);
+  const inMarket = !!sym;
+  let cls="run", txt="running";
+  if(risk.halted_permanent){cls="stop";txt="stopped";}
+  else if(risk.halted_today){cls="pause";txt="paused";}
+  return {initial, equity, netPct, ntrades:(p.trade_log||[]).length, inMarket, cls, txt,
+          updated:st.updated_utc};
+}
+
+const cellById = id => CELLS.find(c=>c.id===id);
+const cellLabel = id => { const c=cellById(id); return c ? `${c.strat.label} · ${c.coin.label}` : id; };
+
 async function load(){
-  let st;
-  try{
-    const r = await fetch(STATE_PATH + "?t=" + Date.now(), {cache:"no-store"});
-    if(!r.ok) throw new Error(r.status);
-    st = await r.json();
-  }catch(e){
+  const results = await Promise.all(CELLS.map(async c=>{
+    try{
+      const r = await fetch(c.path + "?t=" + Date.now(), {cache:"no-store"});
+      if(!r.ok) throw new Error(r.status);
+      return [c.id, await r.json()];
+    }catch(e){ return [c.id, null]; }
+  }));
+  STATES = {};
+  let newest = "";
+  for(const [id,st] of results){ if(st){ STATES[id]=st; if((st.updated_utc||"")>newest) newest=st.updated_utc; } }
+
+  const loaded = Object.keys(STATES);
+  if(!loaded.length){
+    $("board").innerHTML="";
     $("content").style.display="none";
     $("empty").style.display="block";
-    $("updated").textContent="Couldn't read the bot's state file yet.";
+    $("updated").textContent="Couldn't read any bot state files yet.";
     $("status").className="status pause"; $("status").textContent="waiting";
     return;
   }
-  render(st);
+  $("empty").style.display="none";
+  $("updated").textContent = "Last updated " + ago(newest) + " · " + loaded.length + " bots competing";
+
+  drawFilter();
+  drawBoard();
+  // Default the detail view to the current leader; keep the user's pick if valid.
+  if(!selected || !STATES[selected]) selected = leaderKey();
+  $("status").className="status run"; $("status").textContent="Running";
+  render(STATES[selected]);
+  $("detail-title").textContent = "Details · " + cellLabel(selected);
+  document.querySelectorAll("#board tr[data-k]").forEach(tr=>
+    tr.classList.toggle("sel", tr.dataset.k===selected));
+}
+
+// ids to show, honouring the coin filter, sorted by most pretend money.
+function rankedIds(){
+  return Object.keys(STATES)
+    .filter(id => !coinFilter || cellById(id).coin.sym===coinFilter)
+    .sort((a,b)=> summarize(STATES[b]).equity - summarize(STATES[a]).equity);
+}
+function leaderKey(){ return rankedIds()[0]; }
+
+// Coin filter chips (All / BTC / ETH). Only shown when >1 coin has data.
+function drawFilter(){
+  const present = COINS.filter(c => Object.keys(STATES).some(id=>cellById(id).coin.sym===c.sym));
+  if(present.length<2){ $("filter").innerHTML=""; return; }
+  const chip = (val,txt) =>
+    `<button class="chip${coinFilter===val?" on":""}" data-coin="${val}">${txt}</button>`;
+  $("filter").innerHTML = chip("","All coins") + present.map(c=>chip(c.sym,c.label)).join("");
+  document.querySelectorAll("#filter .chip").forEach(b=>
+    b.addEventListener("click", ()=>{ coinFilter=b.dataset.coin; drawFilter(); drawBoard();
+      if(!STATES[selected] || (coinFilter && cellById(selected).coin.sym!==coinFilter)){
+        selected = leaderKey(); render(STATES[selected]);
+        $("detail-title").textContent = "Details · " + cellLabel(selected);
+      }
+      document.querySelectorAll("#board tr[data-k]").forEach(tr=>
+        tr.classList.toggle("sel", tr.dataset.k===selected));
+    }));
+}
+
+function drawBoard(){
+  const rows = rankedIds().map(id => ({id, s:summarize(STATES[id]), c:cellById(id)}));
+  const html = rows.map((row,i)=>{
+    const {id,s,c} = row;
+    const dir = s.netPct>0.005?"up":(s.netPct<-0.005?"down":"flat");
+    const arrow = dir==="up"?"▲":(dir==="down"?"▼":"•");
+    const medal = ["🥇","🥈","🥉"][i] || (i+1)+".";
+    return `<tr data-k="${id}">
+      <td><span class="rank">${medal}</span> <b>${c.strat.label}</b> <span style="color:var(--muted)">· ${c.coin.label}</span>
+          <br><small style="color:var(--muted);font-weight:400">${c.strat.blurb}</small></td>
+      <td>${money(s.equity)}</td>
+      <td class="${dir}">${arrow} ${s.netPct>=0?"+":""}${s.netPct.toFixed(2)}%</td>
+      <td>${s.ntrades}</td>
+      <td><span class="badge ${s.cls}">${s.inMarket?"in a trade":"in cash"} · ${s.txt}</span></td>
+    </tr>`;
+  }).join("");
+  $("board").innerHTML = `<table>
+    <thead><tr><th>Bot</th><th>Money</th><th>Return</th><th>Trades</th><th>Now</th></tr></thead>
+    <tbody>${html}</tbody></table>`;
+  document.querySelectorAll("#board tr[data-k]").forEach(tr=>
+    tr.addEventListener("click", ()=>{
+      selected = tr.dataset.k;
+      render(STATES[selected]);
+      $("detail-title").textContent = "Details · " + cellLabel(selected);
+      document.querySelectorAll("#board tr[data-k]").forEach(t=>t.classList.toggle("sel", t===tr));
+    }));
 }
 
 function render(st){
@@ -145,14 +276,6 @@ function render(st){
   $("content").style.display="block";
   $("empty").style.display="none";
 
-  // status
-  let cls="run", txt="Running";
-  if(risk.halted_permanent){cls="stop";txt="Stopped (safety kill-switch)";}
-  else if(risk.halted_today){cls="pause";txt="Paused for the day (hit its limit)";}
-  $("status").className="status "+cls; $("status").textContent=txt;
-  $("updated").textContent = "Last updated " + ago(st.updated_utc) +
-     " · checked " + (curve.length) + " price bars so far";
-
   // hero
   const dir = net>0.005?"up":(net<-0.005?"down":"flat");
   $("equity").textContent = money(equity);
@@ -162,12 +285,15 @@ function render(st){
   $("delta").textContent = `${arrow} ${netPct>=0?"+":""}${netPct.toFixed(2)}%  (${net>=0?"+":"−"}${money(Math.abs(net)).slice(1)})`;
   $("start").textContent = "started with " + money(initial);
 
+  // Which coin this bot trades (for plain-language labels below).
+  const coinLbl = (cellById(selected)||{}).coin ? cellById(selected).coin.label : "coin";
+
   // position (plain language)
   const sym = Object.keys(p.positions||{})[0];
   const qty = sym ? p.positions[sym] : 0;
   let pos = "Holding nothing";
-  if(qty>1e-9) pos = qty.toFixed(4)+" BTC<br><small style='font-weight:400;color:var(--muted)'>betting it rises</small>";
-  else if(qty<-1e-9) pos = Math.abs(qty).toFixed(4)+" BTC short<br><small style='font-weight:400;color:var(--muted)'>betting it falls</small>";
+  if(qty>1e-9) pos = qty.toFixed(4)+" "+coinLbl+"<br><small style='font-weight:400;color:var(--muted)'>betting it rises</small>";
+  else if(qty<-1e-9) pos = Math.abs(qty).toFixed(4)+" "+coinLbl+" short<br><small style='font-weight:400;color:var(--muted)'>betting it falls</small>";
   $("position").innerHTML = pos;
 
   // max drawdown from the curve
@@ -192,7 +318,7 @@ function render(st){
     const cl = unreal>0?"up":(unreal<0?"down":"flat");
     $("openpos").innerHTML = `<div class="scroll"><table>
       <thead><tr><th>Side</th><th>Size</th><th>Entered at</th><th>Price now</th><th>Profit so far</th></tr></thead>
-      <tbody><tr><td>${side}</td><td>${Math.abs(q).toFixed(4)} BTC</td>
+      <tbody><tr><td>${side}</td><td>${Math.abs(q).toFixed(4)} ${coinLbl}</td>
         <td>$${entry.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
         <td>$${now.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
         <td class="${cl}">${unreal>=0?"+":"−"}$${Math.abs(unreal).toFixed(2)}</td></tr></tbody></table></div>`;
