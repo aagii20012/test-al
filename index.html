@@ -132,10 +132,17 @@ const COINS = [
   {sym:"ETHUSDT", label:"ETH"},
 ];
 // A "cell" is one bot: a strategy on a coin. id = "strategy|coin".
+// Read state straight from GitHub's raw endpoint instead of the relative Pages
+// path, so the live numbers DON'T depend on the GitHub Pages "deploy" step.
+// That deploy intermittently fails ("Deployment failed, try again later") and,
+// when it does, would otherwise freeze the whole scoreboard even though the
+// bots keep ticking. raw serves the current commit's content and sends
+// `access-control-allow-origin: *`, so the browser can fetch it cross-origin.
+const RAW_BASE = "https://raw.githubusercontent.com/aagii20012/test-al/main/state/";
 const CELLS = [];
 for(const c of COINS) for(const s of STRATEGIES)
   CELLS.push({id:`${s.key}|${c.sym}`, strat:s, coin:c,
-              path:`state/${s.key}_${c.sym}_sim.json`});
+              path:`${RAW_BASE}${s.key}_${c.sym}_sim.json`});
 
 let STATES = {};       // id -> parsed state (only the ones that loaded)
 let selected = null;   // currently drilled-into bot id
