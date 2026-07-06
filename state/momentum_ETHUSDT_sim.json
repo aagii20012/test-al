@@ -1,16 +1,16 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 5445.449344574173,
+    "cash": 9914.372487106044,
     "positions": {
-      "ETHUSDT": 2.5801807262270993
+      "ETHUSDT": 0.0
     },
     "avg_price": {
-      "ETHUSDT": 1763.4426179999996
+      "ETHUSDT": 0.0
     },
-    "realized_pnl": 0.0,
-    "total_commission": 4.550000654771057,
-    "total_slippage": 0.9098181673204714,
+    "realized_pnl": -76.60411570011355,
+    "total_commission": 9.023397193842,
+    "total_slippage": 1.8046764467905017,
     "total_financing": 0.0,
     "equity_curve": [
       {
@@ -198,24 +198,31 @@
         "cash": 5445.449344574173,
         "market_value": 4505.356773294187,
         "equity": 9950.80611786836
+      },
+      {
+        "dt": "2026-07-06T13:00:00+00:00",
+        "cash": 5445.449344574173,
+        "market_value": 4474.291397350413,
+        "equity": 9919.740741924586
       }
     ],
-    "trade_log": []
+    "trade_log": [
+      {
+        "dt": "2026-07-06T13:00:00+00:00",
+        "symbol": "ETHUSDT",
+        "side": "SELL",
+        "qty": 2.5801807262270993,
+        "price": 1733.75318,
+        "realized_pnl": -76.60411570011355
+      }
+    ]
   },
   "risk": {
-    "open": {
-      "ETHUSDT": {
-        "entry": 1763.09,
-        "dir": 1,
-        "stop": 1734.54,
-        "take": null,
-        "extreme": 1763.09
-      }
-    },
+    "open": {},
     "peak_equity": 10064.953313196647,
     "day": "2026-07-06",
     "day_start_equity": 10048.9819945013,
-    "halted_today": false,
+    "halted_today": true,
     "halted_permanent": false
   },
   "strategy": {
@@ -223,9 +230,9 @@
       "ETHUSDT": 1
     }
   },
-  "last_bar_ts": 1783339200000,
-  "updated_utc": "2026-07-06T12:31:04.078931+00:00",
-  "equity_now": 9950.80611786836,
-  "cash_now": 5445.449344574173,
-  "last_price": 1746.14
+  "last_bar_ts": 1783342800000,
+  "updated_utc": "2026-07-06T13:31:04.180954+00:00",
+  "equity_now": 9914.372487106044,
+  "cash_now": 9914.372487106044,
+  "last_price": 1734.1
 }
