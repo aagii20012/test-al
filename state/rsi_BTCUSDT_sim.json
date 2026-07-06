@@ -1,16 +1,16 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 1277.8356631500446,
+    "cash": 10232.635892528304,
     "positions": {
-      "BTCUSDT": 0.1410665812524894
+      "BTCUSDT": 0.0
     },
     "avg_price": {
-      "BTCUSDT": 61768.356534905564
+      "BTCUSDT": 0.0
     },
-    "realized_pnl": 0.0,
-    "total_commission": 8.71345088596399,
-    "total_slippage": 1.7423417088512716,
+    "realized_pnl": 250.31310740764107,
+    "total_commission": 17.677214879335622,
+    "total_slippage": 3.535453129809852,
     "total_financing": 0.0,
     "equity_curve": [
       {
@@ -216,30 +216,37 @@
         "cash": 1277.8356631500446,
         "market_value": 8803.162667120536,
         "equity": 10080.99833027058
+      },
+      {
+        "dt": "2026-07-06T16:00:00+00:00",
+        "cash": 1277.8356631500446,
+        "market_value": 8965.55710479259,
+        "equity": 10243.392767942634
       }
     ],
-    "trade_log": []
+    "trade_log": [
+      {
+        "dt": "2026-07-06T16:00:00+00:00",
+        "symbol": "BTCUSDT",
+        "side": "SELL",
+        "qty": 0.1410665812524894,
+        "price": 63542.7889,
+        "realized_pnl": 250.31310740764107
+      }
+    ]
   },
   "risk": {
-    "open": {
-      "BTCUSDT": {
-        "entry": 62023.53,
-        "dir": 1,
-        "stop": 60973.26928571428,
-        "take": null,
-        "extreme": 62023.53
-      }
-    },
-    "peak_equity": 10080.99833027058,
+    "open": {},
+    "peak_equity": 10243.392767942634,
     "day": "2026-07-06",
     "day_start_equity": 10000.0,
-    "halted_today": false,
+    "halted_today": true,
     "halted_permanent": false
   },
   "strategy": {},
-  "last_bar_ts": 1783350000000,
-  "updated_utc": "2026-07-06T15:31:06.981377+00:00",
-  "equity_now": 10080.99833027058,
-  "cash_now": 1277.8356631500446,
-  "last_price": 62404.31
+  "last_bar_ts": 1783353600000,
+  "updated_utc": "2026-07-06T16:29:52.331557+00:00",
+  "equity_now": 10232.635892528304,
+  "cash_now": 10232.635892528304,
+  "last_price": 63555.5
 }
