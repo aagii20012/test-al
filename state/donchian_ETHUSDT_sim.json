@@ -1,16 +1,16 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 9869.645178533969,
+    "cash": 14474.918842017714,
     "positions": {
-      "ETHUSDT": 0.0
+      "ETHUSDT": -2.6871846071465515
     },
     "avg_price": {
-      "ETHUSDT": 0.0
+      "ETHUSDT": 1715.50683
     },
     "realized_pnl": -120.06193236026986,
-    "total_commission": 10.064046393734396,
-    "total_slippage": 2.012804556781956,
+    "total_commission": 14.673929940765172,
+    "total_slippage": 2.934965698416096,
     "total_financing": 0.2288427120264115,
     "equity_curve": [
       {
@@ -498,6 +498,12 @@
         "cash": 9869.645178533969,
         "market_value": 0.0,
         "equity": 9869.645178533969
+      },
+      {
+        "dt": "2026-07-08T15:00:00+00:00",
+        "cash": 9869.645178533969,
+        "market_value": 0.0,
+        "equity": 9869.645178533969
       }
     ],
     "trade_log": [
@@ -512,7 +518,15 @@
     ]
   },
   "risk": {
-    "open": {},
+    "open": {
+      "ETHUSDT": {
+        "entry": 1715.85,
+        "dir": -1,
+        "stop": 1752.5785714285712,
+        "take": null,
+        "extreme": 1715.85
+      }
+    },
     "peak_equity": 10028.26681542442,
     "day": "2026-07-08",
     "day_start_equity": 9869.645178533969,
@@ -520,9 +534,9 @@
     "halted_permanent": false
   },
   "strategy": {},
-  "last_bar_ts": 1783519200000,
-  "updated_utc": "2026-07-08T14:31:12.969774+00:00",
-  "equity_now": 9869.645178533969,
-  "cash_now": 9869.645178533969,
-  "last_price": 1734.07
+  "last_bar_ts": 1783522800000,
+  "updated_utc": "2026-07-08T15:31:13.813861+00:00",
+  "equity_now": 9864.113133845305,
+  "cash_now": 14474.918842017714,
+  "last_price": 1715.85
 }
