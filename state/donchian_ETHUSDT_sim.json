@@ -1,17 +1,17 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 14473.102669956443,
+    "cash": 9723.237687690233,
     "positions": {
-      "ETHUSDT": -2.6871846071465515
+      "ETHUSDT": 0.0
     },
     "avg_price": {
-      "ETHUSDT": 1715.50683
+      "ETHUSDT": 0.0
     },
-    "realized_pnl": -120.06193236026986,
-    "total_commission": 14.673929940765172,
-    "total_slippage": 2.934965698416096,
-    "total_financing": 2.0450147732956196,
+    "realized_pnl": -255.2441452497515,
+    "total_commission": 19.41899570068543,
+    "total_slippage": 3.883789085722849,
+    "total_financing": 2.099171359329101,
     "equity_curve": [
       {
         "dt": "2026-07-05T06:00:00+00:00",
@@ -708,6 +708,12 @@
         "cash": 14473.102669956443,
         "market_value": -4679.19455642429,
         "equity": 9793.908113532154
+      },
+      {
+        "dt": "2026-07-10T02:00:00+00:00",
+        "cash": 14473.04851337041,
+        "market_value": -4744.116936532951,
+        "equity": 9728.931576837458
       }
     ],
     "trade_log": [
@@ -718,19 +724,19 @@
         "qty": 2.847988608045559,
         "price": 1787.947518,
         "realized_pnl": -120.06193236026986
+      },
+      {
+        "dt": "2026-07-10T02:00:00+00:00",
+        "symbol": "ETHUSDT",
+        "side": "BUY",
+        "qty": 2.6871846071465515,
+        "price": 1765.813092,
+        "realized_pnl": -135.18221288948166
       }
     ]
   },
   "risk": {
-    "open": {
-      "ETHUSDT": {
-        "entry": 1715.85,
-        "dir": -1,
-        "stop": 1752.5785714285712,
-        "take": null,
-        "extreme": 1715.85
-      }
-    },
+    "open": {},
     "peak_equity": 10028.26681542442,
     "day": "2026-07-10",
     "day_start_equity": 9787.78100439869,
@@ -738,9 +744,9 @@
     "halted_permanent": false
   },
   "strategy": {},
-  "last_bar_ts": 1783645200000,
-  "updated_utc": "2026-07-10T01:01:11.795448+00:00",
-  "equity_now": 9793.908113532154,
-  "cash_now": 14473.102669956443,
-  "last_price": 1741.3
+  "last_bar_ts": 1783648800000,
+  "updated_utc": "2026-07-10T02:31:07.020520+00:00",
+  "equity_now": 9723.237687690233,
+  "cash_now": 9723.237687690233,
+  "last_price": 1765.46
 }
