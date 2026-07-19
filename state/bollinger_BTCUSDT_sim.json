@@ -1,17 +1,17 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 20191.929094023573,
+    "cash": 10027.899632815572,
     "positions": {
-      "BTCUSDT": -0.15666251596917838
+      "BTCUSDT": 0.0
     },
     "avg_price": {
-      "BTCUSDT": 64381.5085788384
+      "BTCUSDT": 0.0
     },
-    "realized_pnl": 203.19670736983844,
-    "total_commission": 121.70995581687683,
-    "total_slippage": 24.342404998197843,
-    "total_financing": 7.889162449999895,
+    "realized_pnl": 135.6060091506702,
+    "total_commission": 131.86371563094806,
+    "total_slippage": 26.37275089183312,
+    "total_financing": 8.005049772695987,
     "equity_curve": [
       {
         "dt": "2026-07-05T06:00:00+00:00",
@@ -1986,6 +1986,12 @@
         "cash": 20191.929094023573,
         "market_value": -10145.340770776376,
         "equity": 10046.588323247197
+      },
+      {
+        "dt": "2026-07-19T00:00:00+00:00",
+        "cash": 20191.813206700877,
+        "market_value": -10151.729468177598,
+        "equity": 10040.083738523279
       }
     ],
     "trade_log": [
@@ -2076,29 +2082,29 @@
         "qty": 0.10562969185400384,
         "price": 62742.546,
         "realized_pnl": 264.6607315041979
+      },
+      {
+        "dt": "2026-07-19T00:00:00+00:00",
+        "symbol": "BTCUSDT",
+        "side": "BUY",
+        "qty": 0.15666251596917838,
+        "price": 64812.949998,
+        "realized_pnl": -67.59069821916825
       }
     ]
   },
   "risk": {
-    "open": {
-      "BTCUSDT": {
-        "entry": 64445.57,
-        "dir": -1,
-        "stop": 64772.21107142857,
-        "take": null,
-        "extreme": 64445.57
-      }
-    },
+    "open": {},
     "peak_equity": 10181.019305985534,
-    "day": "2026-07-18",
-    "day_start_equity": 10116.482007954957,
+    "day": "2026-07-19",
+    "day_start_equity": 10040.083738523279,
     "halted_today": false,
     "halted_permanent": false
   },
   "strategy": {},
-  "last_bar_ts": 1784415600000,
-  "updated_utc": "2026-07-18T23:09:04.514936+00:00",
-  "equity_now": 10046.588323247197,
-  "cash_now": 20191.929094023573,
-  "last_price": 64759.21
+  "last_bar_ts": 1784419200000,
+  "updated_utc": "2026-07-19T00:01:10.425439+00:00",
+  "equity_now": 10027.899632815572,
+  "cash_now": 10027.899632815572,
+  "last_price": 64799.99
 }
