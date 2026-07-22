@@ -1,16 +1,16 @@
 {
   "portfolio": {
     "initial_capital": 10000.0,
-    "cash": 8.602106848554874,
+    "cash": 9616.405490410358,
     "positions": {
-      "ETHUSDT": 4.93373100271365
+      "ETHUSDT": 0.0
     },
     "avg_price": {
-      "ETHUSDT": 1932.2500067740393
+      "ETHUSDT": 0.0
     },
-    "realized_pnl": -368.66501532025603,
-    "total_commission": 86.54731519515268,
-    "total_slippage": 17.309067656721055,
+    "realized_pnl": -284.4459743688236,
+    "total_commission": 96.16473599951885,
+    "total_slippage": 19.232936591381314,
     "total_financing": 2.983799221300387,
     "equity_curve": [
       {
@@ -2514,6 +2514,12 @@
         "cash": 8.602106848554874,
         "market_value": 9540.355639947384,
         "equity": 9548.957746795939
+      },
+      {
+        "dt": "2026-07-22T15:00:00+00:00",
+        "cash": 8.602106848554874,
+        "market_value": 9619.34467330083,
+        "equity": 9627.946780149385
       }
     ],
     "trade_log": [
@@ -2564,29 +2570,29 @@
         "qty": 5.321062137757123,
         "price": 1847.01933,
         "realized_pnl": -114.90011137475335
+      },
+      {
+        "dt": "2026-07-22T15:00:00+00:00",
+        "symbol": "ETHUSDT",
+        "side": "SELL",
+        "qty": 4.93373100271365,
+        "price": 1949.320058,
+        "realized_pnl": 84.21904095143243
       }
     ]
   },
   "risk": {
-    "open": {
-      "ETHUSDT": {
-        "entry": 1940.52,
-        "dir": 1,
-        "stop": 1909.9735714285714,
-        "take": null,
-        "extreme": 1940.52
-      }
-    },
+    "open": {},
     "peak_equity": 10028.26681542442,
     "day": "2026-07-22",
     "day_start_equity": 9523.30234558183,
-    "halted_today": false,
+    "halted_today": true,
     "halted_permanent": false
   },
   "strategy": {},
-  "last_bar_ts": 1784728800000,
-  "updated_utc": "2026-07-22T14:20:24.847520+00:00",
-  "equity_now": 9548.957746795939,
-  "cash_now": 8.602106848554874,
-  "last_price": 1933.7
+  "last_bar_ts": 1784732400000,
+  "updated_utc": "2026-07-22T15:31:01.889056+00:00",
+  "equity_now": 9616.405490410358,
+  "cash_now": 9616.405490410358,
+  "last_price": 1949.71
 }
