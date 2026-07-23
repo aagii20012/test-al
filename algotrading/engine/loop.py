@@ -29,7 +29,18 @@ def dispatch_pending(events: EventQueue, strategy, portfolio, execution) -> None
             #    handlers (they return no deferred fills).
             for fill in execution.on_market(event):
                 portfolio.update_fill(fill)
-            # 2. Strategy reacts to the new bar; 3. portfolio marks-to-market.
+            # 2. Portfolio-authoritative reconciliation. The portfolio is the
+            #    single source of truth for what is actually held. Overwrite the
+            #    strategy's position memory from the book HERE — after every
+            #    portfolio-changing fill for this bar (including stops /
+            #    circuit-breaker flattens / rejected orders carried over from
+            #    prior bars) and BEFORE the strategy reads that memory to decide.
+            #    This is the one lifecycle point that makes an uninterrupted run
+            #    and a restart-every-bar run produce identical decisions: a stale
+            #    or corrupted persisted `_pos`/`_in_market` cannot survive to
+            #    influence a signal.
+            strategy.sync_positions(portfolio)
+            # 3. Strategy reacts to the new bar; 4. portfolio marks-to-market.
             strategy.calculate_signals(event)
             portfolio.update_timeindex(event)
         elif event.type is EventType.SIGNAL:

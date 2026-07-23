@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Paper trading bot</title>
+<title>Paper trading bot · Generation 1 INVALIDATED_IMPLEMENTATION</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
 <style>
   :root{
@@ -67,24 +67,44 @@
         background:var(--panel);color:var(--muted);border:1px solid var(--line);}
   .chip:hover{color:var(--ink);}
   .chip.on{background:rgba(90,176,255,.14);color:var(--accent);border-color:var(--accent);}
+
+  /* Generation-1 invalidation notice. PREPARED, NOT DEPLOYED: this markup is
+     staged in the working tree only — deploying it is a separate, approved step.
+     The original numbers are intentionally left in place, only labelled. */
+  .invalid-banner{background:rgba(255,107,107,.12);border:1px solid var(--down);
+    border-left:4px solid var(--down);border-radius:12px;padding:14px 16px;margin:0 0 20px;}
+  .invalid-banner .t{color:var(--down);font-weight:700;font-size:.82rem;text-transform:uppercase;
+    letter-spacing:.12em;margin-bottom:6px;}
+  .invalid-banner p{margin:0;color:var(--ink);font-size:.9rem;line-height:1.55;}
+  .invalid-banner .status-literal{font-family:var(--mono);letter-spacing:.04em;}
+  .invalid-banner .status-note{margin-top:8px;color:var(--muted);font-size:.82rem;}
+  .invalid-banner .status-note b{color:var(--down);font-family:var(--mono);font-weight:700;}
+  .invalid-tag{font-size:.68rem;font-weight:700;letter-spacing:.08em;padding:2px 7px;
+    border-radius:999px;background:rgba(255,107,107,.16);color:var(--down);
+    border:1px solid var(--down);white-space:nowrap;}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="invalid-banner" role="alert">
+    <div class="t">⚠ Generation 1 — Status: <span class="status-literal">INVALIDATED_IMPLEMENTATION</span></div>
+    <p>Generation 1 is invalidated. Results are not comparable and must not be used to select a strategy. Three strategies failed to preserve required position state across restarts, a reversal cost-basis defect affected accounting, and the bots did not all share the same evaluation window.</p>
+    <p class="status-note">Every Generation 1 result shown below carries the status <b>INVALIDATED_IMPLEMENTATION</b>. These numbers are retained only as invalidated forensic records; no live Generation 2 experiment is running.</p>
+  </div>
   <header>
     <h1>Strategy bake-off <span class="sub">· BTC &amp; ETH · hourly</span></h1>
     <span id="status" class="status pause">loading…</span>
   </header>
   <div class="updated" id="updated">Reading the bots' latest state…</div>
 
-  <h2 style="margin-top:18px">Leaderboard <span style="color:var(--muted);font-weight:400;font-size:.82rem">· each bot trades its own pretend money · tap one to see details</span></h2>
+  <h2 style="margin-top:18px">Leaderboard <span class="invalid-tag">INVALIDATED_IMPLEMENTATION</span> <span style="color:var(--muted);font-weight:400;font-size:.82rem">· each bot trades its own pretend money · tap one to see details · these Generation 1 numbers must not be used to pick a strategy</span></h2>
   <div id="filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
   <div id="board" class="scroll" style="margin-bottom:26px"></div>
 
   <div id="content" style="display:none">
     <h2 id="detail-title">Details</h2>
     <div class="hero">
-      <div class="label">Your money (pretend)</div>
+      <div class="label">Your money (pretend) <span class="invalid-tag">INVALIDATED_IMPLEMENTATION</span></div>
       <div class="money" id="equity">—</div>
       <div class="delta" id="delta">—</div>
       <div class="start" id="start"></div>
@@ -207,7 +227,7 @@ async function load(){
   drawBoard();
   // Default the detail view to the current leader; keep the user's pick if valid.
   if(!selected || !STATES[selected]) selected = leaderKey();
-  $("status").className="status run"; $("status").textContent="Running";
+  $("status").className="status stop"; $("status").textContent="Gen 1 · frozen · INVALIDATED_IMPLEMENTATION";
   render(STATES[selected]);
   $("detail-title").textContent = "Details · " + cellLabel(selected);
   document.querySelectorAll("#board tr[data-k]").forEach(tr=>
@@ -253,7 +273,7 @@ function drawBoard(){
       <td>${money(s.equity)}</td>
       <td class="${dir}">${arrow} ${s.netPct>=0?"+":""}${s.netPct.toFixed(2)}%</td>
       <td>${s.ntrades}</td>
-      <td><span class="badge ${s.cls}">${s.inMarket?"in a trade":"in cash"} · ${s.txt}</span></td>
+      <td><span class="invalid-tag">INVALIDATED_IMPLEMENTATION</span> <span class="badge ${s.cls}">${s.inMarket?"in a trade":"in cash"} · ${s.txt}</span></td>
     </tr>`;
   }).join("");
   $("board").innerHTML = `<table>

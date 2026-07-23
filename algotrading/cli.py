@@ -232,6 +232,25 @@ def _load_tick_state(path: str):
 
 
 def _save_tick_state(path: str, state: dict) -> None:
+    from .state_schema import IncompatibleStateError, is_current, stamp
+
+    # Every checkpoint we write is stamped as the current generation/schema.
+    stamp(state)
+
+    # Hard guarantee at the write boundary: never overwrite a file that is not
+    # already a current-generation checkpoint. This protects Generation 1
+    # (invalidated) evidence even if a caller forgot to validate on load.
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                existing = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            existing = None
+        if not is_current(existing):
+            raise IncompatibleStateError(
+                f"Refusing to overwrite existing state file {path!r}: it is not a "
+                "current-generation checkpoint and may be invalidated evidence.")
+
     # Atomic write: a crash mid-write must never leave a truncated JSON that
     # wipes all accounting on the next run. Write to a temp file, then replace.
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -298,9 +317,18 @@ def cmd_tick(args, cfg):
     suffix = "_sim" if simulated else ""
     state_path = args.state or os.path.join(
         "state", f"{args.strategy}_{'_'.join(args.symbols)}{suffix}.json")
+    from .state_schema import (
+        ensure_fresh_start_allowed,
+        validate_loadable,
+    )
+
     state = _load_tick_state(state_path)
     last_ts = 0
-    if state:
+    if state is not None:
+        # Fail closed: the corrected runner refuses to resume Generation 1
+        # (unmarked) or any non-current-schema file. No migration, no repair —
+        # an incompatible file raises before any load / decision / write.
+        validate_loadable(state, state_path)
         portfolio.load_state(state["portfolio"])
         risk.load_state(state["risk"])
         strategy.load_state(state.get("strategy", {}))
@@ -308,13 +336,20 @@ def cmd_tick(args, cfg):
         log.info("Restored state from %s: equity=%.2f, halted=%s",
                  state_path, portfolio.equity, risk.halted)
     else:
-        log.info("No prior state at %s; starting fresh at %.2f",
+        # First-ever run for this (strategy, symbols): launching a fresh
+        # Generation 2 experiment requires explicit approval so a scheduler
+        # cannot start one on its own.
+        allow_fresh = (getattr(args, "allow_fresh_generation", False)
+                       or os.environ.get("ALGOTRADING_ALLOW_FRESH_GEN2") == "1")
+        ensure_fresh_start_allowed(state_path, allow_fresh)
+        log.info("No prior state at %s; starting FRESH Generation 2 at %.2f",
                  state_path, portfolio.initial_capital)
 
-    # The real book is the source of truth: heal any strategy position-memory
-    # that disagrees with it (e.g. after a stop/circuit-breaker flatten or a
-    # rejected order on a prior run), so the bot is never wedged out of trading.
-    strategy.sync_positions(portfolio)
+    # Position synchronization is performed inside the shared event loop
+    # (engine/loop.py), AFTER all portfolio-changing fills for the bar and
+    # BEFORE the strategy reads its own position memory — the single correct
+    # lifecycle point. The portfolio is the sole source of truth; any strategy
+    # `_pos` / `_in_market` restored above is overwritten from the book there.
 
     primary = args.symbols[0]
     latest = data.get_latest_bar(primary)
@@ -464,6 +499,10 @@ def build_parser() -> argparse.ArgumentParser:
     ptk.add_argument("--simulated", action="store_true",
                      help="paper-simulate on free public prices (no API key, no "
                           "Binance) — for cloud hosts where Binance is geo-blocked")
+    ptk.add_argument("--allow-fresh-generation", dest="allow_fresh_generation",
+                     action="store_true",
+                     help="permit initialising a fresh Generation 2 state when no "
+                          "state file exists (required to launch a new experiment)")
     ptk.add_argument("--i-understand-real-money", dest="i_understand_real_money",
                      action="store_true", help="required to trade with testnet=false")
 

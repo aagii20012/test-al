@@ -63,6 +63,16 @@ class Portfolio:
         self.equity_curve: List[dict] = []
         self.trade_log: List[dict] = []
 
+        # Append-only audit trail (Decision 2). `fills` holds ONE record per real
+        # exchange fill, keyed by a monotonic `_fill_seq` id that survives
+        # restarts; `legs` decomposes each fill into position-lifecycle legs
+        # (OPEN / CLOSE) that all cite their parent fill_id. A reversal yields a
+        # CLOSE leg AND an OPEN leg sharing one fill_id — it is still ONE fill,
+        # so commission/slippage are recorded once on the fill, never on legs.
+        self._fill_seq = 0
+        self.fills: List[dict] = []
+        self.legs: List[dict] = []
+
     # ---- queries used by the RiskManager ---------------------------------
     def position(self, symbol: str) -> float:
         return self.positions.get(symbol, 0.0)
@@ -143,11 +153,25 @@ class Portfolio:
         # it only for cost attribution / gross-vs-net reporting.
         self.total_slippage += getattr(fill, "slippage_cost", 0.0)
 
-        # Realized P&L when reducing/closing a position.
-        if prev_qty != 0 and (prev_qty > 0) != (signed_qty > 0):
-            closed = min(abs(signed_qty), abs(prev_qty))
+        # ---- append-only audit: decompose this ONE real fill into legs -------
+        # A fill either opens/increases (one OPEN leg), reduces/closes (one CLOSE
+        # leg), or reverses through zero (a CLOSE leg for the whole prior
+        # position AND an OPEN leg for the residual) — every leg citing this one
+        # fill_id. `prev_avg` is captured before the basis is updated below so the
+        # CLOSE leg records the true entry price it is measured against.
+        fill_id = self._fill_seq
+        self._fill_seq += 1
+        prev_avg = self.avg_price[fill.symbol]
+
+        opposes = prev_qty != 0 and (prev_qty > 0) != (signed_qty > 0)
+        closed = min(abs(signed_qty), abs(prev_qty)) if opposes else 0.0
+        opened = abs(signed_qty) - closed
+
+        # Realized P&L when reducing/closing a position (books ONLY the closed
+        # quantity, at the pre-fill basis — unchanged accounting from Step 5).
+        if closed > 0:
             direction_sign = 1 if prev_qty > 0 else -1
-            pnl = (fill.fill_price - self.avg_price[fill.symbol]) * closed * direction_sign
+            pnl = (fill.fill_price - prev_avg) * closed * direction_sign
             self.realized_pnl += pnl
             self.trade_log.append(
                 {
@@ -155,6 +179,37 @@ class Portfolio:
                     "qty": closed, "price": fill.fill_price, "realized_pnl": pnl,
                 }
             )
+            self.legs.append(
+                {
+                    "leg": "CLOSE", "fill_id": fill_id, "dt": fill.dt,
+                    "symbol": fill.symbol, "side": fill.direction.value,
+                    "qty": closed, "entry_price": prev_avg,
+                    "exit_price": fill.fill_price, "realized_pnl": pnl,
+                }
+            )
+        if opened > 0:
+            # The opened lot's entry is THIS fill's price (a reversal residual or
+            # a scale-in). The book's blended avg_price is tracked separately.
+            self.legs.append(
+                {
+                    "leg": "OPEN", "fill_id": fill_id, "dt": fill.dt,
+                    "symbol": fill.symbol, "side": fill.direction.value,
+                    "qty": opened, "entry_price": fill.fill_price,
+                    "exit_price": None, "realized_pnl": 0.0,
+                }
+            )
+
+        # One record per real fill — commission/slippage counted here, ONCE.
+        self.fills.append(
+            {
+                "fill_id": fill_id, "dt": fill.dt, "symbol": fill.symbol,
+                "side": fill.direction.value, "qty": fill.quantity,
+                "price": fill.fill_price, "commission": fill.commission,
+                "slippage_cost": getattr(fill, "slippage_cost", 0.0),
+                "exchange": getattr(fill, "exchange", "SIM"),
+                "prev_qty": prev_qty, "new_qty": new_qty,
+            }
+        )
 
         # Update cost basis on increases / new positions.
         if new_qty == 0:
@@ -163,6 +218,16 @@ class Portfolio:
         elif (prev_qty >= 0 and signed_qty > 0) or (prev_qty <= 0 and signed_qty < 0):
             total_cost = self.avg_price[fill.symbol] * abs(prev_qty) + fill.gross_value
             self.avg_price[fill.symbol] = total_cost / abs(new_qty)
+        elif prev_qty * new_qty < 0:
+            # Reversal that crosses THROUGH zero (e.g. +5 sold 8 -> -3). This is
+            # one real fill at one real price, not two fabricated exchange fills:
+            # the closing leg's P&L was already booked above on close_quantity
+            # (= min(|prev|, |fill|)), and the residual is a NEW opposite
+            # position opened at THIS fill's price. Its cost basis is therefore
+            # the actual fill price. Leaving the pre-reversal basis in place was
+            # the Generation 1 defect: the next reduce/close mis-measured P&L
+            # against a stale long/short entry that no longer existed.
+            self.avg_price[fill.symbol] = fill.fill_price
 
         self.positions[fill.symbol] = new_qty
         log.info(
@@ -178,6 +243,8 @@ class Portfolio:
     # history forever. These tails still cover months of hourly history.
     _MAX_EQUITY_ROWS = 5000   # ~7 months at 1h
     _MAX_TRADE_ROWS = 1000
+    _MAX_FILL_ROWS = 2000     # append-only fill ledger tail
+    _MAX_LEG_ROWS = 4000      # up to ~2 legs per fill (reversals)
 
     def dump_state(self) -> dict:
         """Serialise everything needed to resume accounting on a later run."""
@@ -201,6 +268,9 @@ class Portfolio:
             "total_financing": self.total_financing,
             "equity_curve": _ser(self.equity_curve, self._MAX_EQUITY_ROWS),
             "trade_log": _ser(self.trade_log, self._MAX_TRADE_ROWS),
+            "fill_seq": self._fill_seq,
+            "fills": _ser(self.fills, self._MAX_FILL_ROWS),
+            "legs": _ser(self.legs, self._MAX_LEG_ROWS),
         }
 
     def load_state(self, s: dict) -> None:
@@ -214,6 +284,11 @@ class Portfolio:
         self.total_financing = float(s.get("total_financing", 0.0))
         self.equity_curve = [{**e, "dt": _parse_dt(e["dt"])} for e in s.get("equity_curve", [])]
         self.trade_log = [{**t, "dt": _parse_dt(t["dt"])} for t in s.get("trade_log", [])]
+        # `fill_seq` must resume from the saved high-water mark so fill ids stay
+        # monotonic across restarts even after the fills tail has been capped.
+        self._fill_seq = int(s.get("fill_seq", len(s.get("fills", []))))
+        self.fills = [{**f, "dt": _parse_dt(f["dt"])} for f in s.get("fills", [])]
+        self.legs = [{**l, "dt": _parse_dt(l["dt"])} for l in s.get("legs", [])]
 
     # ---- output ----------------------------------------------------------
     def equity_dataframe(self) -> pd.DataFrame:

@@ -1,3 +1,17 @@
+# =====================================================================
+# DISABLED (Generation 1 remediation, Phase 1).
+#
+# This file is intentionally named `paper-trade.yml.disabled` so GitHub
+# Actions does NOT register it as a workflow. It therefore has NO active
+# triggers: the hourly `schedule` cron is suspended, the `workflow_dispatch`
+# manual button is gone, and the external-cron `repository_dispatch: [tick]`
+# poke has nothing to fire. No paper trading tick can run against the
+# invalidated Generation 1 state, and no job can commit over `state/*.json`.
+#
+# It is preserved (not deleted) only as a reference. It will be REPLACED by a
+# new, Generation-2-only workflow when Generation 2 launch is separately
+# approved. Do NOT rename it back to `*.yml` without that approval.
+# =====================================================================
 name: paper-trade
 
 # Runs one trading decision every hour on Binance testnet (paper money).

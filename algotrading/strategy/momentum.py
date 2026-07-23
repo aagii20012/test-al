@@ -83,9 +83,6 @@ class MomentumStrategy(Strategy):
         saved = state.get("pos", {}) if state else {}
         self._pos = {s: int(saved.get(s, 0)) for s in self.symbols}
 
-    def sync_positions(self, portfolio) -> None:
-        # The real position wins: long -> 1, short -> -1, flat -> 0. A no-op when
-        # memory already agrees; only heals a divergence (forced exit / no fill).
-        for s in self.symbols:
-            pos = portfolio.position(s)
-            self._pos[s] = 1 if pos > 0 else (-1 if pos < 0 else 0)
+    # sync_positions is inherited from Strategy: the generic base reconciles
+    # `_pos` from the portfolio (long -> 1, short -> -1, flat -> 0), so momentum
+    # obeys the same portfolio-authoritative contract as every other strategy.

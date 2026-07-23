@@ -44,9 +44,29 @@ class Strategy(ABC):
         vetoed / rounded to zero / rejected, closes (or never opens) the real
         position without the strategy knowing. Trusting stale memory would wedge
         the strategy out of the market — so before each decision the real
-        position is treated as the source of truth. Stateless strategies need no
-        override."""
-        return None
+        position is treated as the single source of truth.
+
+        This generic implementation overwrites whichever position memory a
+        strategy keeps directly from the portfolio, so every stateful strategy
+        obeys the same reconciliation contract without its own override:
+
+          * ``_pos``       — signed direction, set to -1 / 0 / +1
+          * ``_in_market`` — boolean, set to (position != 0)
+
+        Both are *derived* from the book here; neither is an independent
+        authoritative store. Truly stateless strategies keep neither attribute,
+        so this is a no-op for them.
+        """
+        has_pos = hasattr(self, "_pos")
+        has_flag = hasattr(self, "_in_market")
+        if not (has_pos or has_flag):
+            return
+        for s in self.symbols:
+            pos = portfolio.position(s)
+            if has_pos:
+                self._pos[s] = 1 if pos > 0 else (-1 if pos < 0 else 0)
+            if has_flag:
+                self._in_market[s] = pos != 0
 
     # Convenience: strategies often want a numpy array of recent closes.
     def closes(self, symbol: str, n: int):

@@ -13,3 +13,10 @@ data_cache/
 *.log
 *.csv
 !tests/**/*.csv
+
+# Raw historical candle snapshots are LOCAL, regenerable data (~0.5 MB/symbol).
+# They are NOT published: the public dashboard never reads them and no test
+# depends on them. Reproducibility is anchored by the committed
+# `*.manifest.json` SHA-256 hashes + `tools/download_history.py` (re-download,
+# re-hash, compare). Track the small manifests; ignore the large raw payloads.
+historical_data/**/*.raw.json
