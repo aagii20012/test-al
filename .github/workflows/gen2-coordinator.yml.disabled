@@ -1,0 +1,192 @@
+# =====================================================================
+# DISABLED — Generation 2 coordinator (Phase 2, pre-launch).
+#
+# This file is intentionally named `gen2-coordinator.yml.disabled` so GitHub
+# Actions does NOT register it as a workflow. It has NO active effect until BOTH:
+#
+#   1. a human activates a Generation-2 experiment (PREPARED -> ACTIVE, gated by
+#      a live market-data provenance preflight) and commits its
+#      `state/gen2/<experiment_id>/` directory to the repo, and
+#   2. this file is deliberately renamed to `gen2-coordinator.yml`.
+#
+# Until then it is a reference artifact only. Renaming it to `*.yml` IS the
+# Generation-2 launch switch and must not happen without explicit launch approval.
+#
+# ---------------------------------------------------------------------
+# Activation-safety guarantees this workflow is designed to provide
+# (each is proved by construction below and/or by the coordinator it invokes):
+#
+#   * ONE coordinator per experiment. The `resolve-experiment` job reads the
+#     single committed manifest and FAILS if zero or >1 experiments exist. Its id
+#     keys the `tick` job's `concurrency.group`, so two runs of the SAME
+#     experiment never execute concurrently — and the key is derived from the
+#     authoritative on-disk state, not a spoofable trigger payload.
+#   * The runner VERIFIES CURRENT + every artifact hash BEFORE computing
+#     (`verify-current`), and the coordinator re-verifies internally on load; a
+#     corrupt/mismatched pointer fails the run closed with zero publication.
+#   * A stale/slow run CANNOT publish over a newer one. The coordinator only ever
+#     moves CURRENT forward (monotonic boundary + prior-lineage check ->
+#     StaleRunError), holds its own on-disk lock, and here a lost git race is
+#     handled by rebase-then-REVALIDATE: if incorporating the remote makes CURRENT
+#     fail verification, or the histories conflict, the run fails closed instead
+#     of clobbering. There is NO force push anywhere.
+#   * It commits ONLY `state/gen2/<experiment_id>/`. A guard aborts the run if a
+#     tick dirtied anything outside that path, so a Generation-1 file
+#     (`state/*_sim.json`) can never be touched.
+#   * The dashboard reads only CURRENT (see dashboard.py -> checkpoint.resolve_current),
+#     so an orphan/unpublished checkpoint is invisible until CURRENT points at it.
+#   * A live tick refuses to run unless the experiment is already ACTIVE, and the
+#     runner must pass `--i-understand-this-goes-live`.
+# =====================================================================
+name: gen2-coordinator
+
+on:
+  # All triggers are present-but-dormant while this file is `.disabled`; GitHub
+  # registers none of them. When launch is approved and the file is renamed to
+  # `*.yml`, an external cron (e.g. cron-job.org) pokes `repository_dispatch` for
+  # reliable hourly runs; the schedule is a free backup; workflow_dispatch runs
+  # one tick by hand.
+  repository_dispatch:
+    types: [gen2-tick]
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch: {}
+
+# Allow the job to commit the updated Generation-2 state back to the repo.
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------------
+  # Resolve THE single active experiment from committed state. This makes the
+  # experiment id an authoritative, non-spoofable value (read from the manifest
+  # on disk, not from the trigger payload) that keys the tick job's concurrency.
+  # -------------------------------------------------------------------
+  resolve-experiment:
+    runs-on: ubuntu-latest
+    outputs:
+      experiment_id: ${{ steps.resolve.outputs.experiment_id }}
+      status: ${{ steps.resolve.outputs.status }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Resolve the single Generation-2 experiment id + status
+        id: resolve
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import glob, json, os, sys
+          paths = sorted(glob.glob(os.path.join("state", "gen2", "*", "manifest.json")))
+          if len(paths) != 1:
+              sys.stderr.write(
+                  f"Expected exactly ONE committed Generation-2 experiment, found "
+                  f"{len(paths)}: {paths}. One coordinator per experiment.\n")
+              sys.exit(1)
+          with open(paths[0], "r", encoding="utf-8") as fh:
+              m = json.load(fh)
+          print(f"experiment_id={m['experiment_id']}")
+          print(f"status={m['status']}")
+          PY
+
+  # -------------------------------------------------------------------
+  # Run exactly one coordinator tick. Concurrency is keyed by the resolved
+  # experiment id, so overlapping runs of the same experiment serialise (and the
+  # coordinator's lock + monotonic CURRENT catch anything that slips past).
+  # -------------------------------------------------------------------
+  tick:
+    needs: resolve-experiment
+    # Only tick an experiment that a human has explicitly ACTIVATED. A PREPARED
+    # (built-but-not-launched) experiment is never ticked, even if this file were
+    # renamed to `*.yml` by mistake.
+    if: needs.resolve-experiment.outputs.status == 'ACTIVE'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gen2-coordinator-${{ needs.resolve-experiment.outputs.experiment_id }}
+      cancel-in-progress: false
+    env:
+      EXPERIMENT_ID: ${{ needs.resolve-experiment.outputs.experiment_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the rebase before push has a merge base
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify CURRENT before computing (fail closed on any hash mismatch)
+        # The coordinator re-verifies on load too; this makes the pre-condition
+        # observable and stops a tick before it computes if the published pointer
+        # or any checkpoint artifact has been tampered with.
+        run: |
+          python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current
+
+      - name: Run ONE Generation-2 coordinator tick (all 8 bots, simulated, public prices)
+        # A single process fetches BTC+ETH closed candles once, freezes one shared
+        # hashed market snapshot, runs all 8 bots against it, and publishes
+        # atomically. Requires an ACTIVE experiment on disk; refuses otherwise.
+        # No `|| true`: a required-bot failure must abort the whole tick with zero
+        # publication.
+        run: |
+          python -m algotrading.gen2 --config config/config.ci.yaml \
+            --experiment-id "$EXPERIMENT_ID" tick --i-understand-this-goes-live
+
+      - name: Persist Generation-2 state back to the repo (scoped, rebase-revalidated, no force)
+        run: |
+          set -euo pipefail
+          git config user.name "gen2-coordinator-bot"
+          git config user.email "gen2-coordinator-bot@users.noreply.github.com"
+
+          EXP_PATH="state/gen2/${EXPERIMENT_ID}"
+
+          # Guard: a tick must ONLY write inside its own experiment directory.
+          # Anything dirty outside it (especially a Generation-1 state file) is a
+          # bug or tampering -> fail closed, publish nothing.
+          OUTSIDE="$(git status --porcelain | grep -v " ${EXP_PATH}/" || true)"
+          if [ -n "$OUTSIDE" ]; then
+            echo "::error::Tick dirtied paths outside ${EXP_PATH}:"
+            echo "$OUTSIDE"
+            exit 1
+          fi
+
+          # Stage ONLY this experiment's directory.
+          git add "$EXP_PATH"
+          if git diff --staged --quiet; then
+            echo "No Generation-2 state change to commit."
+            exit 0
+          fi
+          git commit -m "gen2: coordinator tick [skip ci]"
+
+          # Publish with rebase-then-REVALIDATE. A push race is retried; a rebase
+          # CONFLICT means a newer run already advanced this experiment, so we fail
+          # closed rather than clobber it (never --force).
+          pushed=""
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              echo "::error::Rebase conflict incorporating origin/main — a newer run "
+              echo "::error::published for this experiment. Failing closed (no clobber)."
+              exit 1
+            fi
+            # Revalidate CURRENT after incorporating the remote: the pushed tree
+            # must still resolve to a fully hash-consistent checkpoint.
+            if ! python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current; then
+              echo "::error::CURRENT failed verification after rebase; refusing to push."
+              exit 1
+            fi
+            if git push origin HEAD:main; then pushed=1; break; fi
+            echo "push attempt $attempt rejected (remote advanced); retrying..."
+            sleep 5
+          done
+          if [ -z "$pushed" ]; then
+            echo "::error::Failed to persist Generation-2 state after 5 attempts."
+            exit 1
+          fi

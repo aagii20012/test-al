@@ -1,0 +1,53 @@
+# =====================================================================
+# CI — offline test suite only.
+#
+# This workflow exists solely to give pushed commits a verifiable green-build
+# provenance (it runs `pytest` in a clean Ubuntu + Python 3.11 environment). It is
+# deliberately inert with respect to trading:
+#
+#   * Triggers ONLY on push and pull_request. No schedule, no repository_dispatch,
+#     no workflow_dispatch — it can never be poked to run a trading tick.
+#   * It runs the test suite and nothing else. It does NOT invoke the Generation-1
+#     or Generation-2 coordinators, does NOT fetch live market data (the whole
+#     suite is offline: every fetch/HTTP call in tests is an injected fake), and
+#     places no orders.
+#   * `permissions: contents: read` — it cannot write to the repo. It makes no
+#     commits, no pushes, and no state updates. It reads no secrets.
+#
+# Renaming or enabling the Generation-2 coordinator is a separate, human-gated
+# launch step and is unaffected by this file.
+# =====================================================================
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# Least privilege: the test job only needs to read the checked-out code.
+permissions:
+  contents: read
+
+# Supersede an in-flight run for the same ref when a newer commit arrives.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the offline test suite (no market data, no coordinator, no trading)
+        run: python -m pytest -q
