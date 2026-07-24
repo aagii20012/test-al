@@ -1,0 +1,111 @@
+{
+  "bot_id": "bollinger_BTCUSDT",
+  "cash_now": 4993.999,
+  "dry_run": false,
+  "equity_now": 9999.558933776952,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "last_bar_ts": 1784919600000,
+  "last_price": 64163.76,
+  "portfolio": {
+    "avg_price": {
+      "BTCUSDT": 64105.308498000006
+    },
+    "cash": 4993.999,
+    "equity_curve": [
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T09:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T13:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 4993.999,
+        "dt": "2026-07-24T14:00:00+00:00",
+        "equity": 9986.277346495823,
+        "market_value": 4992.278346495822
+      },
+      {
+        "cash": 4993.999,
+        "dt": "2026-07-24T15:00:00+00:00",
+        "equity": 9988.80338347769,
+        "market_value": 4994.80438347769
+      },
+      {
+        "cash": 4993.999,
+        "dt": "2026-07-24T17:00:00+00:00",
+        "equity": 9995.916541353128,
+        "market_value": 5001.917541353128
+      },
+      {
+        "cash": 4993.999,
+        "dt": "2026-07-24T19:00:00+00:00",
+        "equity": 9999.558933776952,
+        "market_value": 5005.559933776953
+      }
+    ],
+    "fill_seq": 1,
+    "fills": [
+      {
+        "commission": 5.001,
+        "dt": "2026-07-24T13:00:00+00:00",
+        "exchange": "SIM",
+        "fill_id": 0,
+        "new_qty": 0.07801226009474745,
+        "prev_qty": 0.0,
+        "price": 64105.308498,
+        "qty": 0.07801226009474745,
+        "side": "BUY",
+        "slippage_cost": 1.0000000000000424,
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "initial_capital": 10000.0,
+    "legs": [
+      {
+        "dt": "2026-07-24T13:00:00+00:00",
+        "entry_price": 64105.308498,
+        "exit_price": null,
+        "fill_id": 0,
+        "leg": "OPEN",
+        "qty": 0.07801226009474745,
+        "realized_pnl": 0.0,
+        "side": "BUY",
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "positions": {
+      "BTCUSDT": 0.07801226009474745
+    },
+    "realized_pnl": 0.0,
+    "total_commission": 5.001,
+    "total_financing": 0.0,
+    "total_slippage": 1.0000000000000424,
+    "trade_log": []
+  },
+  "risk": {
+    "day": "2026-07-24",
+    "day_start_equity": 10000.0,
+    "halted_permanent": false,
+    "halted_today": false,
+    "open": {
+      "BTCUSDT": {
+        "dir": 1,
+        "entry": 64092.49,
+        "extreme": 64092.49,
+        "stop": 63251.84714285714,
+        "take": null
+      }
+    },
+    "peak_equity": 10000.0
+  },
+  "schema_version": 2,
+  "strategy": {},
+  "updated_utc": "2026-07-24T20:41:20.542586+00:00"
+}
