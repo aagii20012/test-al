@@ -1,0 +1,53 @@
+{
+  "blocked": false,
+  "checked_utc": "2026-07-24T02:39:37.574858+00:00",
+  "failed": false,
+  "freshness_tolerance_s": 7200,
+  "interval": "1h",
+  "issues": [],
+  "min_warmup": 110,
+  "ok": true,
+  "products": [
+    {
+      "candle_count": 349,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "issues": [],
+      "newest_close_age_s": 2377.0,
+      "newest_close_epoch_ms": 1784858400000,
+      "newest_open_epoch_ms": 1784854800000,
+      "newest_price": 65030.0,
+      "newest_volume": 173.20392486,
+      "ok": true,
+      "product": "BTC-USD",
+      "raw_bytes": 21062,
+      "raw_sha256": "b0136136d6e783dd691b4b8a6c75a5866842760530f3d76b14224fc4f4a792d0",
+      "server_date_utc": "2026-07-24T02:39:38+00:00",
+      "server_header": "cloudflare",
+      "symbol": "BTCUSDT",
+      "url": "https://api.exchange.coinbase.com/products/BTC-USD/candles"
+    },
+    {
+      "candle_count": 349,
+      "content_type": "application/json; charset=utf-8",
+      "http_status": 200,
+      "issues": [],
+      "newest_close_age_s": 2377.0,
+      "newest_close_epoch_ms": 1784858400000,
+      "newest_open_epoch_ms": 1784854800000,
+      "newest_price": 1871.22,
+      "newest_volume": 2495.33620065,
+      "ok": true,
+      "product": "ETH-USD",
+      "raw_bytes": 20283,
+      "raw_sha256": "416da99281820f020d89ce1f776a386d338393b0379f904ec99afe3966da0a41",
+      "server_date_utc": "2026-07-24T02:39:38+00:00",
+      "server_header": "cloudflare",
+      "symbol": "ETHUSDT",
+      "url": "https://api.exchange.coinbase.com/products/ETH-USD/candles"
+    }
+  ],
+  "shared_boundary_epoch_ms": 1784854800000,
+  "source": "network",
+  "strict": true
+}
