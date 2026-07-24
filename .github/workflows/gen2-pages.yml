@@ -27,14 +27,23 @@
 name: gen2-pages
 
 on:
-  # Manual deploy/redeploy — used for the Gate-L1 canary and for the recovery
-  # runbook's "redeploy last-good dashboard" step.
+  # Gate L2 PRIMARY TRIGGER: auto-deploy after the coordinator finishes.
+  # `workflow_run` is NOT suppressed by "[skip ci]" (that only affects the
+  # push/pull_request events of the *committing* run), so a scheduled tick — whose
+  # checkpoint commit carries "[skip ci]" — still fires exactly one dashboard
+  # deploy here. The build job below runs ONLY when that coordinator run concluded
+  # `success` on `main`; a failed/cancelled coordinator deploys nothing and the
+  # last known-good site stays live.
+  workflow_run:
+    workflows: ["gen2-coordinator"]
+    types: [completed]
+  # Manual deploy/redeploy — recovery runbook's "redeploy last-good dashboard".
   workflow_dispatch: {}
-  # Auto-refresh when committed Gen2 state or the dashboard renderer changes.
-  # NOTE: coordinator ticks commit with "[skip ci]", which suppresses ALL Actions
-  # for that commit, so a live tick does NOT auto-trigger this build. During the
-  # manual-canary phase the dashboard is (re)deployed via workflow_dispatch. A
-  # `workflow_run` trigger keyed to the coordinator is deferred to Gate L2.
+  # Belt-and-braces auto-refresh when the committed dashboard renderer (or state)
+  # changes via a NON-tick commit (e.g. this Gate-L2 change updates the banner
+  # text). Tick commits carry "[skip ci]" and do NOT fire this push trigger, so
+  # the primary `workflow_run` path above is the sole deployer after a tick — no
+  # duplicate. The shared `concurrency` group serialises any overlap regardless.
   push:
     branches: [main]
     paths:
@@ -63,9 +72,48 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Deploy ONLY on a healthy trigger:
+    #   * workflow_run  -> the coordinator concluded `success` on `main`. A
+    #     failed/cancelled/other-branch coordinator run deploys nothing.
+    #   * push / workflow_dispatch -> always allowed (already scoped to main/paths
+    #     or an explicit human recovery action).
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_branch == 'main') }}
     steps:
-      - name: Check out repo
+      - name: Check out the LATEST verified origin/main (not workflow_run.head_sha)
+        # The coordinator creates its checkpoint commit DURING the run, so the
+        # triggering run's head SHA predates the state we must publish. We check out
+        # the current tip of main (fetch-depth: 0 so the descendant check below has
+        # full history) and then prove it descends from that run.
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify latest main descends from the triggering coordinator run
+        # Fail closed if the checked-out tip is not a descendant of (or equal to)
+        # the coordinator run's head SHA — i.e. history diverged or the run does not
+        # belong to this line. Only meaningful for the workflow_run trigger.
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          TIP="$(git rev-parse HEAD)"
+          echo "Triggering coordinator run head SHA: ${HEAD_SHA}"
+          echo "Checked-out main tip:                ${TIP}"
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::Triggering head SHA ${HEAD_SHA} is absent from main history;"
+            echo "::error::refusing to publish state not descended from that run."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${HEAD_SHA}" "${TIP}"; then
+            echo "::error::main tip ${TIP} is NOT a descendant of coordinator head"
+            echo "::error::${HEAD_SHA}. History diverged; failing closed (keep last-good)."
+            exit 1
+          fi
+          echo "OK: main tip descends from (or equals) the coordinator run head."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -78,9 +126,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build the static dashboard from committed state (read-only)
-        # Renders the single deployable experiment, or an honest placeholder page
-        # when only a retired/terminal experiment exists. Fails closed on a
-        # corrupt/unverifiable CURRENT.
+        # RESOLVE + HASH-VERIFY BEFORE BUILD: build-pages resolves the single
+        # deployable experiment, then build_scoreboard re-verifies the CURRENT
+        # pointer, its checkpoint-manifest hash AND every artifact hash BEFORE any
+        # HTML is written. On any integrity defect it raises, no index.html is
+        # produced, the `test -f` below also fails, this job fails, the deploy job
+        # (which `needs` it) is skipped, and the last known-good published site
+        # stays live. An orphan/partial/unverified checkpoint is therefore never
+        # displayed. (Only a retired/terminal-only store renders an honest
+        # placeholder rather than fake numbers.)
         run: |
           python -m algotrading.gen2 build-pages --out site
           test -f site/index.html

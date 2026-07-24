@@ -1,14 +1,16 @@
 # =====================================================================
-# Generation-2 coordinator — GATE L1 (manual-only canary).
+# Generation-2 coordinator — GATE L2 (recurring hourly schedule).
 #
-# LAUNCH STATE: activated. This file is the manual launch switch for exactly ONE
-# Generation-2 experiment (gen2-20260724T023914Z-b91b8e74). It is deliberately
-# restricted to `workflow_dispatch` — there is NO `schedule` and NO
-# `repository_dispatch` — so it can only ever run when a human explicitly clicks
-# "Run workflow" (or dispatches via the API). It cannot fire on its own.
+# LAUNCH STATE: activated + scheduled. This file runs exactly ONE eligible
+# Generation-2 experiment (currently gen2-20260724T044436Z-01a99bd6) on a
+# recurring hourly cron. The L1 canary passed every validation, so Gate L2 adds
+# one `schedule` (off-peak minute 17, NOT minute 0) alongside `workflow_dispatch`.
+# `workflow_dispatch` is retained ONLY for controlled recovery (e.g. redeploy /
+# catch-up) — the schedule, not a human, is the normal trigger. There is still NO
+# `repository_dispatch`.
 #
-# The recurring hourly cron is added in a SEPARATE, later commit (Gate L2), and
-# only after the L1 canary passes every validation exactly.
+# Gate history: L1 was manual-only (`workflow_dispatch`, no schedule); the hourly
+# cron below is the Gate-L2 change, added only after the L1 canary verified.
 #
 # Activation-safety guarantees (proved by construction + by the coordinator):
 #   * ONE coordinator per experiment. `resolve-experiment` reads every committed
@@ -26,13 +28,23 @@
 #     dirtied, so a Generation-1 file (state/*_sim.json) can never be touched.
 #   * A live tick refuses unless the experiment is ACTIVE and the runner passes
 #     --i-understand-this-goes-live.
-#   * --allow-fresh is present ONLY on this L1 (genesis) workflow so the first-ever
-#     tick can initialise from $10k with no prior checkpoint. The Gate-L2 recurring
-#     workflow OMITS it, so a scheduler can never silently start a fresh run.
+#   * --allow-fresh is DELIBERATELY ABSENT here. It existed only on the L1 genesis
+#     tick so the first-ever run could initialise from $10k with no prior
+#     checkpoint. This recurring Gate-L2 workflow OMITS it: if CURRENT is ever lost,
+#     the scheduler fails closed rather than silently re-initialising a fresh $10k
+#     run. Genesis is done; there is nothing left to bootstrap.
 # =====================================================================
 name: gen2-coordinator
 
 on:
+  # Gate L2: recurring hourly tick at an off-peak minute (NOT :00, to avoid the
+  # top-of-hour scheduler congestion GitHub warns about; delivery may still lag).
+  # Exactly ONE schedule entry — the coordinator advances at most one shared
+  # candle per invocation and never batch-processes missed hours.
+  schedule:
+    - cron: "17 * * * *"
+  # Retained for controlled recovery only (redeploy / operator catch-up). Not the
+  # normal trigger and not used to enable the schedule.
   workflow_dispatch: {}
 
 # Least privilege by default: most of the workflow only needs to read the repo.
@@ -136,10 +148,11 @@ jobs:
         # hashed market snapshot, runs all 8 bots against it, and publishes
         # atomically. Requires an ACTIVE experiment; refuses otherwise. No `|| true`:
         # a required-bot failure aborts the whole tick with zero publication.
-        # --allow-fresh is Gate-L1 (genesis) ONLY and is removed at Gate L2.
+        # NOTE: --allow-fresh is intentionally NOT passed. Genesis is complete, so a
+        # scheduled tick with a missing CURRENT must fail closed, not re-initialise.
         run: |
           python -m algotrading.gen2 --config config/config.ci.yaml \
-            --experiment-id "$EXPERIMENT_ID" tick --i-understand-this-goes-live --allow-fresh
+            --experiment-id "$EXPERIMENT_ID" tick --i-understand-this-goes-live
 
       - name: Persist Generation-2 state back to the repo (scoped, rebase-revalidated, no force)
         run: |
