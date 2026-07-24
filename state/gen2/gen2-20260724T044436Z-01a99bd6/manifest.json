@@ -1,0 +1,150 @@
+{
+  "activation_commit": null,
+  "binding_sha256": "2a4d23ec00eeb4568eaaac56657936fdc557082e3d8665ce8d8330f8842c7cdf",
+  "bots": [
+    {
+      "bot_id": "momentum_BTCUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "lookback": 96,
+        "threshold": 1.0
+      },
+      "params_sha256": "6b3701d3b8299c8aa6aac75e271e7e4c9cb7276ac0b4dced72a7b59471ccf52e",
+      "product": "BTC-USD",
+      "strategy": "momentum",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "bot_id": "momentum_ETHUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "lookback": 96,
+        "threshold": 1.0
+      },
+      "params_sha256": "6b3701d3b8299c8aa6aac75e271e7e4c9cb7276ac0b4dced72a7b59471ccf52e",
+      "product": "ETH-USD",
+      "strategy": "momentum",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "bot_id": "rsi_BTCUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "exit_level": 50,
+        "oversold": 30,
+        "period": 14
+      },
+      "params_sha256": "7cad38e776dd60712468edbc4a46971f901a77437aa528a087c02f884f9b3d0f",
+      "product": "BTC-USD",
+      "strategy": "rsi",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "bot_id": "rsi_ETHUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "exit_level": 50,
+        "oversold": 30,
+        "period": 14
+      },
+      "params_sha256": "7cad38e776dd60712468edbc4a46971f901a77437aa528a087c02f884f9b3d0f",
+      "product": "ETH-USD",
+      "strategy": "rsi",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "bot_id": "donchian_BTCUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "entry": 55,
+        "exit": 20,
+        "trend": 100
+      },
+      "params_sha256": "7e02f54753e12ee2965a27535844361acf3a5207e57fbb93a2de9d52af97bc7f",
+      "product": "BTC-USD",
+      "strategy": "donchian",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "bot_id": "donchian_ETHUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "entry": 55,
+        "exit": 20,
+        "trend": 100
+      },
+      "params_sha256": "7e02f54753e12ee2965a27535844361acf3a5207e57fbb93a2de9d52af97bc7f",
+      "product": "ETH-USD",
+      "strategy": "donchian",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "bot_id": "bollinger_BTCUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "entry_z": 2.0,
+        "exit_z": 0.5,
+        "window": 20
+      },
+      "params_sha256": "9b80fb834996063e8ab803aaef10a926b83e18f5f259e8e11c982caa86c8c36e",
+      "product": "BTC-USD",
+      "strategy": "bollinger",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "bot_id": "bollinger_ETHUSDT",
+      "initial_capital": 10000.0,
+      "params": {
+        "entry_z": 2.0,
+        "exit_z": 0.5,
+        "window": 20
+      },
+      "params_sha256": "9b80fb834996063e8ab803aaef10a926b83e18f5f259e8e11c982caa86c8c36e",
+      "product": "ETH-USD",
+      "strategy": "bollinger",
+      "symbol": "ETHUSDT"
+    }
+  ],
+  "boundary_rule": "The shared decision hour is the latest closed 1h candle present in EVERY product. One coordinator tick advances all 8 bots on that single boundary or advances none of them.",
+  "capital_per_bot": 10000.0,
+  "code": {
+    "implementation_commit": "977f0ebe9eebf3d569bf87a02ca9d712aa4c911b",
+    "source_file_count": 58,
+    "source_hash_algorithm": "python-source-canonical-sha256",
+    "source_hash_version": 2,
+    "source_inventory_sha256": "c8585457a8c0ab2ee571c03bd75248e640d929d9212ba7258d486d3747e8b283",
+    "source_tree_sha256": "507bae775c0d533dd588555d4355c1fb1e6f698e1329f1a7ff06e239e96c0699"
+  },
+  "config": {
+    "path": "config/config.ci.yaml",
+    "sha256": "deb1c1f78b1ffee96da3fc2a174cf6e769d924e5497bac2390df78ab37034995"
+  },
+  "cost_model": {
+    "commission_pct": 0.001,
+    "fill_at": "close",
+    "min_notional": 10.0,
+    "slippage_bps": 2.0
+  },
+  "created_utc": "2026-07-24T04:44:36.844685+00:00",
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "history": [],
+  "idempotency": "idempotency_key = experiment_id + ':' + shared_candle_epoch. A published key never re-advances any bot; per-bot last_bar_ts <= shared_candle_epoch is required to act, so a crash-resumed tick converges to the same result.",
+  "market": {
+    "history": 300,
+    "interval": "1h",
+    "products": {
+      "BTCUSDT": "BTC-USD",
+      "ETHUSDT": "ETH-USD"
+    },
+    "source": "coinbase-public"
+  },
+  "schema_version": 2,
+  "status": "PREPARED",
+  "strategies_sha256": {
+    "bollinger": "be2a5e484364ecac610aee488aec9fec62428a194f1d343f9fdc62af74ecf94a",
+    "donchian": "e687f71b86453e619fca43eaf81792b9cada204a23ee84008579500a95453fd4",
+    "momentum": "a07389e9e7209290603f322a2a82bdc6785e2a61a8eb1ed5e380a1cd40ae5cbe",
+    "rsi": "ef527aa43a746071bc1756c637ee102cac8b372bec6c58a7e5caaeed380bd66d"
+  }
+}
