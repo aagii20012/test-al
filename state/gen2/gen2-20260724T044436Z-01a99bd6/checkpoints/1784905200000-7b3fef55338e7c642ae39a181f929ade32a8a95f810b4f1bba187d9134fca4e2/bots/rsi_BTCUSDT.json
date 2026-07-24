@@ -1,0 +1,99 @@
+{
+  "bot_id": "rsi_BTCUSDT",
+  "cash_now": 9871.072067923265,
+  "dry_run": false,
+  "equity_now": 9999.8454461914,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "last_bar_ts": 1784905200000,
+  "last_price": 64025.89,
+  "portfolio": {
+    "avg_price": {
+      "BTCUSDT": 64038.695178
+    },
+    "cash": 9871.072067923265,
+    "equity_curve": [
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T09:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T13:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T14:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T15:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      }
+    ],
+    "fill_seq": 1,
+    "fills": [
+      {
+        "commission": 0.12879913294378958,
+        "dt": "2026-07-24T15:00:00+00:00",
+        "exchange": "SIM",
+        "fill_id": 0,
+        "new_qty": 0.00201127041370508,
+        "prev_qty": 0.0,
+        "price": 64038.695177999994,
+        "qty": 0.00201127041370508,
+        "side": "BUY",
+        "slippage_cost": 0.02575467565361727,
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "initial_capital": 10000.0,
+    "legs": [
+      {
+        "dt": "2026-07-24T15:00:00+00:00",
+        "entry_price": 64038.695177999994,
+        "exit_price": null,
+        "fill_id": 0,
+        "leg": "OPEN",
+        "qty": 0.00201127041370508,
+        "realized_pnl": 0.0,
+        "side": "BUY",
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "positions": {
+      "BTCUSDT": 0.00201127041370508
+    },
+    "realized_pnl": 0.0,
+    "total_commission": 0.12879913294378958,
+    "total_financing": 0.0,
+    "total_slippage": 0.02575467565361727,
+    "trade_log": []
+  },
+  "risk": {
+    "day": "2026-07-24",
+    "day_start_equity": 10000.0,
+    "halted_permanent": false,
+    "halted_today": false,
+    "open": {
+      "BTCUSDT": {
+        "dir": 1,
+        "entry": 64025.89,
+        "extreme": 64025.89,
+        "stop": 63116.590000000004,
+        "take": null
+      }
+    },
+    "peak_equity": 10000.0
+  },
+  "schema_version": 2,
+  "strategy": {},
+  "updated_utc": "2026-07-24T16:58:54.409589+00:00"
+}
