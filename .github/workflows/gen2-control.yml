@@ -1,0 +1,249 @@
+# =====================================================================
+# Generation-2 MANUAL control console (GATE L1 — human-dispatched only).
+#
+# One safe, GitHub-web-only operator surface for a single Generation-2 experiment.
+# It does exactly four things, chosen from a closed vocabulary, and nothing else:
+#
+#   activate  PREPARED -> ACTIVE. Before flipping, the engine runs the STRICT
+#             keyless Coinbase public provenance gate (its own real request — an
+#             injected fetch is refused) AND the source-binding / code-drift check.
+#             It STOPS (no flip, no commit) if either fails.
+#   canary    Run exactly ONE live coordinator tick on an ACTIVE experiment. It
+#             publishes AT MOST one new shared boundary; a second dispatch on the
+#             same boundary returns ALREADY_PUBLISHED and changes nothing.
+#   verify    READ-ONLY. Resolve CURRENT and re-verify the checkpoint manifest +
+#             every artifact hash. Fails closed (job red) on any integrity defect.
+#   pause     ACTIVE -> PAUSED. The stop button; refuses anything not ACTIVE.
+#
+# Safety by construction:
+#   * `workflow_dispatch` ONLY. There is NO `schedule`, NO `repository_dispatch`,
+#     NO `push` trigger — the cron stays disabled and this can never fire itself.
+#   * The `action` input is a CLOSED choice list; `experiment_id` is passed ONLY
+#     through the environment (never interpolated into a shell command), so there
+#     is no arbitrary-command surface.
+#   * A read-only `guard` job runs FIRST (contents: read). It refuses an unknown,
+#     retired, terminal, or wrong-status experiment id, and refuses an action that
+#     is illegal for the experiment's current status. Nothing downstream runs
+#     unless the guard passes.
+#   * Only the `mutate` job has `contents: write`, and only for activate/canary/
+#     pause. It re-asserts the guard, then commits ONLY paths under
+#     state/gen2/<experiment_id>/ (a Generation-1 file can never be touched),
+#     rebases + REVALIDATES before pushing, and NEVER force-pushes. A rebase
+#     conflict fails closed.
+#   * No secrets are referenced anywhere. No exchange credentials, no orders — the
+#     tick is simulated against read-only public candles, exactly as tested.
+#   * Concurrency is keyed by experiment id, so two dispatches for the same
+#     experiment serialise (never overlap).
+#
+# The consequential actions reuse the already-tested engine entry points
+# (`python -m algotrading.gen2 activate|tick|verify-current`); only the missing
+# PREPARED/status legality gate and the ACTIVE->PAUSED transition live in the
+# out-of-tree helper tools/gen2_control.py, which by design cannot change the
+# bound algotrading/ source hash.
+# =====================================================================
+name: gen2-control
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Control action to perform (closed set)"
+        type: choice
+        required: true
+        options:
+          - activate
+          - canary
+          - verify
+          - pause
+      experiment_id:
+        description: "Exact Gen2 experiment id (must be committed, non-retired)"
+        type: string
+        required: true
+
+# Least privilege by default: everything is read-only unless a job opts up.
+permissions:
+  contents: read
+
+# Serialise dispatches per experiment; never cancel an in-flight control action.
+concurrency:
+  group: gen2-control-${{ inputs.experiment_id }}
+  cancel-in-progress: false
+
+jobs:
+  # -------------------------------------------------------------------
+  # READ-ONLY legality gate. Refuses (fails closed) unless the experiment id names
+  # a committed, non-retired, non-terminal experiment whose binding verifies AND
+  # the requested action is legal for its current status. No write permission.
+  # -------------------------------------------------------------------
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ACTION: ${{ inputs.action }}
+      EXPERIMENT_ID: ${{ inputs.experiment_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Guard — assert the action is legal for this exact experiment
+        # Uses the authoritative engine code (RETIRED set, Status, binding verify)
+        # via the out-of-tree helper; no re-implemented logic that could drift.
+        run: |
+          python tools/gen2_control.py guard --action "$ACTION" \
+            --experiment-id "$EXPERIMENT_ID"
+
+  # -------------------------------------------------------------------
+  # READ-ONLY verify path. Re-verifies CURRENT + every artifact hash. contents:
+  # read only — it can never mutate or publish.
+  # -------------------------------------------------------------------
+  verify:
+    needs: guard
+    if: inputs.action == 'verify'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      EXPERIMENT_ID: ${{ inputs.experiment_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify CURRENT (checkpoint manifest + all artifact hashes; read-only)
+        run: |
+          python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current
+
+  # -------------------------------------------------------------------
+  # The ONLY writing job, and only for activate/canary/pause. It re-asserts the
+  # guard, performs exactly the requested action, then persists ONLY this
+  # experiment's directory with a rebase-then-revalidate publish (no force).
+  # -------------------------------------------------------------------
+  mutate:
+    needs: guard
+    if: inputs.action != 'verify'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      ACTION: ${{ inputs.action }}
+      EXPERIMENT_ID: ${{ inputs.experiment_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the rebase before push has a merge base
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Re-assert the legality guard (defence in depth, now with write perms)
+        run: |
+          python tools/gen2_control.py guard --action "$ACTION" \
+            --experiment-id "$EXPERIMENT_ID"
+
+      - name: Perform the requested control action
+        # activate -> engine runs strict provenance + source-binding, THEN flips.
+        # canary   -> ONE live tick; idempotent (ALREADY_PUBLISHED on same boundary).
+        # pause    -> ACTIVE -> PAUSED via the audited out-of-tree helper.
+        run: |
+          set -euo pipefail
+          case "$ACTION" in
+            activate)
+              python -m algotrading.gen2 --config config/config.ci.yaml \
+                --experiment-id "$EXPERIMENT_ID" activate --i-understand-this-goes-live
+              ;;
+            canary)
+              python -m algotrading.gen2 --config config/config.ci.yaml \
+                --experiment-id "$EXPERIMENT_ID" tick --i-understand-this-goes-live --allow-fresh
+              ;;
+            pause)
+              python tools/gen2_control.py pause --experiment-id "$EXPERIMENT_ID"
+              ;;
+            *)
+              echo "::error::Unexpected action '$ACTION' reached the mutate job."
+              exit 1
+              ;;
+          esac
+
+      - name: Persist permitted Gen2 state (scoped, rebase-revalidated, no force)
+        run: |
+          set -euo pipefail
+          git config user.name "gen2-control-bot"
+          git config user.email "gen2-control-bot@users.noreply.github.com"
+
+          EXP_PATH="state/gen2/${EXPERIMENT_ID}"
+
+          # Guard: a control action must ONLY write inside its own experiment
+          # directory. awk (exit 0 on no match) prints any dirty path NOT under
+          # EXP_PATH, so we avoid `|| true` and still fail closed on anything
+          # outside it (a Generation-1 state/*_sim.json can never be committed).
+          OUTSIDE="$(git status --porcelain | awk -v p=" ${EXP_PATH}/" 'index($0, p) == 0')"
+          if [ -n "$OUTSIDE" ]; then
+            echo "::error::Action dirtied paths outside ${EXP_PATH}:"
+            echo "$OUTSIDE"
+            exit 1
+          fi
+
+          # Stage ONLY this experiment's directory.
+          git add "$EXP_PATH"
+          if git diff --staged --quiet; then
+            # e.g. a second canary on the same boundary (ALREADY_PUBLISHED) or any
+            # action that produced no on-disk change — nothing to publish.
+            echo "No Generation-2 state change to commit (idempotent no-op)."
+            exit 0
+          fi
+          git commit -m "gen2-control: ${ACTION} [skip ci]"
+
+          # Publish with rebase-then-REVALIDATE. verify-current re-checks the
+          # manifest binding (via the coordinator load) AND, if a checkpoint
+          # exists, its full hash consistency after incorporating origin/main. A
+          # rebase CONFLICT means a newer run advanced this experiment, so fail
+          # closed rather than clobber (never --force).
+          pushed=""
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort
+              echo "::error::Rebase conflict incorporating origin/main — a newer run "
+              echo "::error::published for this experiment. Failing closed (no clobber)."
+              exit 1
+            fi
+            if ! python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current; then
+              echo "::error::CURRENT failed verification after rebase; refusing to push."
+              exit 1
+            fi
+            if git push origin HEAD:main; then pushed=1; break; fi
+            echo "push attempt $attempt rejected (remote advanced); retrying..."
+            sleep 5
+          done
+          if [ -z "$pushed" ]; then
+            echo "::error::Failed to persist Generation-2 state after 5 attempts."
+            exit 1
+          fi
