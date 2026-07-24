@@ -1,0 +1,61 @@
+{
+  "record_type": "gen2_activation_record",
+  "gate": "L1",
+  "experiment_id": "gen2-20260724T023914Z-b91b8e74",
+  "generation": "gen2",
+  "schema_version": 2,
+  "created_utc": "2026-07-24T02:39:14.952795+00:00",
+
+  "code_binding": {
+    "implementation_commit": "9b751bfc1b9c4d3f94b4527eebc57a7fb028e17a",
+    "source_tree_sha256": "9681fdbadfa076a8ebfe64af33fe9444c3967a582854e65cbfddd01850793d41",
+    "source_file_count": 57,
+    "config_path": "config/config.ci.yaml",
+    "config_sha256": "deb1c1f78b1ffee96da3fc2a174cf6e769d924e5497bac2390df78ab37034995",
+    "binding_sha256": "0d464c5e79d77138fc73ad4427fb9966a4bc8142036469465dc729175c6303bb"
+  },
+
+  "provenance_note": "Two-commit protocol. This record is committed AFTER the activation-state commit exists, so it can name that commit's real hash without any commit claiming to contain its own not-yet-known hash.",
+  "activation_state_commit": "4086e77c16b55383abaa2c3af3867b146f0c9825",
+  "activation_state_commit_ci_run_id": 30062606171,
+  "activation_state_commit_ci_conclusion": "success",
+
+  "manifest_activation_commit_field": "9b751bfc1b9c4d3f94b4527eebc57a7fb028e17a",
+  "manifest_activation_commit_field_meaning": "Set by the coordinator as git HEAD at the instant set_status(ACTIVE) ran; activation preceded the state commit, so this equals the implementation commit. It is a NON-binding field and a known prior hash, never a self-reference. The commit that actually carried the ACTIVE state into the repo is activation_state_commit above.",
+
+  "activation_provenance": {
+    "meaning": "Strict, keyless Coinbase public-data provenance captured at the activation decision (NOT the canary tick). The canary fetches its own fresh candles at dispatch time and computes its own decision boundary, reported separately from the published checkpoint.",
+    "report_path": "state/gen2/gen2-20260724T023914Z-b91b8e74/preflight/provenance-12b863eb54d010a9.json",
+    "source": "network",
+    "strict": true,
+    "checked_utc": "2026-07-24T02:39:37.574858+00:00",
+    "server_date_utc": "2026-07-24T02:39:38+00:00",
+    "freshness_tolerance_s": 7200,
+    "interval": "1h",
+    "shared_boundary_epoch_ms": 1784854800000,
+    "newest_close_epoch_ms": 1784858400000,
+    "newest_close_age_s": 2377.0,
+    "products": [
+      {
+        "symbol": "BTCUSDT",
+        "product": "BTC-USD",
+        "http_status": 200,
+        "newest_close_price": 65030.0,
+        "raw_sha256": "b0136136d6e783dd691b4b8a6c75a5866842760530f3d76b14224fc4f4a792d0"
+      },
+      {
+        "symbol": "ETHUSDT",
+        "product": "ETH-USD",
+        "http_status": 200,
+        "newest_close_price": 1871.22,
+        "raw_sha256": "416da99281820f020d89ce1f776a386d338393b0379f904ec99afe3966da0a41"
+      }
+    ]
+  },
+
+  "checkpoint_published_at_this_record": false,
+  "genesis_note": "No checkpoint / CURRENT exists as of this record. The single manual workflow_dispatch canary performs the atomic genesis + first-decision publish (--allow-fresh, Gate-L1 one-shot; the Gate-L2 recurring workflow omits --allow-fresh).",
+
+  "authorized_scope": "Simulated paper trading only. No real or testnet exchange orders, no credentials, no parameter changes, no strategy optimization, no live-money trading. $10,000 simulated capital per bot; 8 bots. Generation 2 begins evidence collection and does NOT validate an edge or recommend real-money trading.",
+  "generation_1_untouched": true
+}
