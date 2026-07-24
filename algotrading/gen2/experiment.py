@@ -74,9 +74,27 @@ class Status:
     ACTIVE = "ACTIVE"       # explicitly launched (human-gated); live ticks allowed
     PAUSED = "PAUSED"       # temporarily halted; resumable to ACTIVE
     FAILED = "FAILED"       # a tick aborted; requires investigation before resume
+    # TERMINAL: a Gate-L1 canary failed under a source-binding/portability defect.
+    # An experiment in this state is dead forever — it never ticks again (dry or
+    # live) and is never repaired, reused, or reactivated. A fresh experiment id
+    # is minted instead. See its append-only FAILED_CANARY record.
+    FAILED_CANARY = "FAILED_CANARY"
     CLOSED = "CLOSED"       # terminal; no further ticks
 
-    ALL = {PREPARED, ACTIVE, PAUSED, FAILED, CLOSED}
+    ALL = {PREPARED, ACTIVE, PAUSED, FAILED, FAILED_CANARY, CLOSED}
+    # Statuses from which NO tick (dry or live) may ever run.
+    TERMINAL = {FAILED_CANARY, CLOSED}
+
+
+# Experiment ids that are permanently retired and must refuse every tick,
+# independent of whatever status happens to be on disk. This is a belt-and-
+# suspenders guard layered on top of the TERMINAL status check: even if a
+# retired manifest were somehow edited back to ACTIVE, the coordinator still
+# refuses to tick it. gen2-20260724T023914Z-b91b8e74 is the Gate-L1 canary that
+# failed with SOURCE_BINDING_PORTABILITY (Windows CRLF vs Linux LF source hash).
+RETIRED_EXPERIMENT_IDS = frozenset({
+    "gen2-20260724T023914Z-b91b8e74",
+})
 
 
 def _bot_id(strategy: str, symbol: str) -> str:
@@ -120,26 +138,25 @@ def _package_dir() -> str:
 
 
 def source_tree_hash(package_dir: Optional[str] = None) -> Dict[str, object]:
-    """Content hash of every ``*.py`` under the algotrading package.
+    """Platform-independent canonical hash of the bound ``algotrading`` source.
 
-    Independent of git: hashes sorted ``relpath:filehash`` pairs so a byte
-    change anywhere in the corrected code changes the experiment id.
+    Delegates to :func:`algotrading.gen2.source_hash.canonical_source_hash`
+    (algorithm ``python-source-canonical-sha256`` version 2). That algorithm
+    decodes each file as strict UTF-8 and normalises CRLF/CR -> LF before
+    hashing, so the digest is identical on a Windows dev checkout and on a Linux
+    GitHub runner (the v1 raw-byte hash was not — see ``source_hash`` docstring).
+
+    Returns a dict that KEEPS the v1 ``sha256`` + ``file_count`` keys (existing
+    callers and the coordinator's drift monkeypatch rely on them) and adds
+    ``algorithm``, ``version`` and ``inventory_sha256`` so the manifest can record
+    the algorithm identity and the exact declared source inventory.
+
+    The ``package_dir`` argument is retained for signature compatibility but is
+    ignored: v2 always resolves the repo root itself and hashes the committed
+    declared inventory, never an uncontrolled glob.
     """
-    package_dir = package_dir or _package_dir()
-    entries: List[str] = []
-    for root, _dirs, files in os.walk(package_dir):
-        if "__pycache__" in root:
-            continue
-        for name in sorted(files):
-            if not name.endswith(".py"):
-                continue
-            full = os.path.join(root, name)
-            rel = os.path.relpath(full, package_dir).replace(os.sep, "/")
-            with open(full, "rb") as fh:
-                entries.append(f"{rel}:{sha256_bytes(fh.read())}")
-    entries.sort()
-    digest = sha256_bytes("\n".join(entries).encode("utf-8"))
-    return {"sha256": digest, "file_count": len(entries)}
+    from . import source_hash
+    return source_hash.canonical_source_hash()
 
 
 def git_commit(cwd: Optional[str] = None) -> Optional[str]:
@@ -317,6 +334,11 @@ def build_manifest(
             else git_commit()),
         "source_tree_sha256": tree["sha256"],
         "source_file_count": tree["file_count"],
+        # v2 canonical-hash identity, so a manifest bound under a different
+        # algorithm/version/inventory can never verify against this code.
+        "source_hash_algorithm": tree["algorithm"],
+        "source_hash_version": tree["version"],
+        "source_inventory_sha256": tree["inventory_sha256"],
     }
     config = {
         "path": config_path,

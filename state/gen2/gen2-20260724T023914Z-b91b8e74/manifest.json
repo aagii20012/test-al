@@ -130,6 +130,13 @@
       "approved": true,
       "from": "PREPARED",
       "to": "ACTIVE"
+    },
+    {
+      "approved": false,
+      "from": "ACTIVE",
+      "to": "FAILED_CANARY",
+      "reason": "SOURCE_BINDING_PORTABILITY: v1 raw-byte source hash bound on Windows (CRLF) can never match the LF checkout on the GitHub Ubuntu runner; canary failed closed in _verify_code_binding() before any boundary/checkpoint/bot mutation. Terminal. See FAILED_CANARY.json.",
+      "recorded_utc": "2026-07-24T04:04:20.056913+00:00"
     }
   ],
   "idempotency": "idempotency_key = experiment_id + ':' + shared_candle_epoch. A published key never re-advances any bot; per-bot last_bar_ts <= shared_candle_epoch is required to act, so a crash-resumed tick converges to the same result.",
@@ -143,7 +150,7 @@
     "source": "coinbase-public"
   },
   "schema_version": 2,
-  "status": "ACTIVE",
+  "status": "FAILED_CANARY",
   "strategies_sha256": {
     "bollinger": "be2a5e484364ecac610aee488aec9fec62428a194f1d343f9fdc62af74ecf94a",
     "donchian": "e687f71b86453e619fca43eaf81792b9cada204a23ee84008579500a95453fd4",

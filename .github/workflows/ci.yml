@@ -51,3 +51,26 @@ jobs:
 
       - name: Run the offline test suite (no market data, no coordinator, no trading)
         run: python -m pytest -q
+
+      - name: Prove LF/CRLF source-hash portability on Linux (evidence in log)
+        # The full suite above already covers this; re-running the portability
+        # tests verbosely puts their names + PASS status directly in the CI log as
+        # named evidence that LF, CRLF, mixed and lone-CR trees hash identically on
+        # a genuine Ubuntu runner (the authoritative environment).
+        run: |
+          python -m pytest tests/test_gen2_source_hash.py -v \
+            -k "lf or crlf or windows or linux or newline or deterministic"
+
+      - name: Record the Gen2 canonical source hash (Linux authoritative value)
+        # Prints the canonical v2 hash of the ACTUAL checked-out tree so the Linux
+        # value is captured in the CI log. This is the value the local Windows
+        # checkout MUST reproduce byte-for-byte; a mismatch means the portability
+        # remediation regressed (SOURCE_BINDING_REMEDIATION_FAILED).
+        run: |
+          python - <<'PY'
+          from algotrading.gen2 import source_hash as sh
+          h = sh.canonical_source_hash()
+          print("GEN2_CANONICAL_SOURCE_HASH")
+          for k in ("algorithm", "version", "sha256", "file_count", "inventory_sha256"):
+              print(f"  {k}={h[k]}")
+          PY

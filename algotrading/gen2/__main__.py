@@ -64,7 +64,8 @@ from . import dashboard
 from . import provenance as prov
 from .checkpoint import CheckpointError
 from .coordinator import Gen2Coordinator, NotActivatedError
-from .experiment import ExperimentManifest, Status, build_manifest
+from .experiment import (
+    RETIRED_EXPERIMENT_IDS, ExperimentManifest, Status, build_manifest)
 
 _DEFAULT_STATE_ROOT = "state"
 _DEFAULT_CONFIG = "config/config.ci.yaml"
@@ -101,6 +102,36 @@ def _has_single_experiment(state_root: str) -> bool:
     """True iff exactly one prepared experiment exists (never raises)."""
     pattern = os.path.join(_gen2_root(state_root), "*", "manifest.json")
     return len(glob.glob(pattern)) == 1
+
+
+def _deployable_experiment_id(state_root: str):
+    """Return THE single deployable (non-terminal, non-retired) experiment id.
+
+    The public dashboard must never surface a retired/terminal experiment as if it
+    were the live board. This filters those out and returns:
+      * the id            when exactly one deployable experiment exists;
+      * None              when none exist (dormant phase -> placeholder page);
+    and raises SystemExit when more than one is deployable (ambiguous — the
+    operator must pass --experiment-id explicitly). It never raises just because a
+    retired experiment is also present on disk.
+    """
+    pattern = os.path.join(_gen2_root(state_root), "*", "manifest.json")
+    deployable = []
+    for path in sorted(glob.glob(pattern)):
+        with open(path, "r", encoding="utf-8") as fh:
+            m = json.load(fh)
+        exp_id = m.get("experiment_id")
+        status = m.get("status")
+        if exp_id in RETIRED_EXPERIMENT_IDS or status in Status.TERMINAL:
+            continue
+        deployable.append(exp_id)
+    if not deployable:
+        return None
+    if len(deployable) > 1:
+        raise SystemExit(
+            "More than one deployable Generation-2 experiment; pass "
+            "--experiment-id to choose one:\n  " + "\n  ".join(deployable))
+    return deployable[0]
 
 
 def _load_coord(args, *, allow_fresh: bool) -> Gen2Coordinator:
@@ -159,6 +190,37 @@ def cmd_scoreboard(args) -> int:
               f"(status={sb['status']}, trading={sb['trading']})")
     else:
         sys.stdout.write(html)
+    return 0
+
+
+def cmd_build_pages(args) -> int:
+    """Build the deployed GitHub Pages site into --out (default: site/).
+
+    Selects the single deployable experiment (or honours --experiment-id). When
+    none is deployable (only a retired/terminal experiment on disk), it writes an
+    honest placeholder page instead of failing, so the public site never implies a
+    board is live. A corrupt/unverifiable CURRENT for the selected experiment
+    fails closed (build_scoreboard raises) so the deploy step is skipped and the
+    last-good published site is preserved.
+    """
+    out_dir = args.out
+    exp_id = args.experiment_id or _deployable_experiment_id(args.state_root)
+    if exp_id is None:
+        os.makedirs(out_dir, exist_ok=True)
+        html = dashboard.render_pages_placeholder_html()
+        with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write(html)
+        with open(os.path.join(out_dir, ".nojekyll"), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write("")
+        print(f"Pages site written to {out_dir} (no deployable experiment; "
+              "placeholder page)")
+        return 0
+    exp_dir = os.path.join(_gen2_root(args.state_root), exp_id)
+    sb = dashboard.build_pages_site(exp_dir, out_dir)
+    print(f"Pages site written to {out_dir} "
+          f"(experiment={exp_id}, status={sb['status']}, trading={sb['trading']})")
     return 0
 
 
@@ -354,6 +416,12 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--out", default=None,
                     help="write HTML here (default: print to stdout)")
 
+    pg = sub.add_parser(
+        "build-pages",
+        help="build the deployed GitHub Pages site (index.html + .nojekyll)")
+    pg.add_argument("--out", default="site",
+                    help="output directory for the static site (default: site)")
+
     pf = sub.add_parser(
         "preflight",
         help="run the keyless public market-data provenance gate (read-only)")
@@ -399,6 +467,7 @@ def main(argv=None) -> int:
     handlers = {
         "prepare": cmd_prepare,
         "scoreboard": cmd_scoreboard,
+        "build-pages": cmd_build_pages,
         "preflight": cmd_preflight,
         "verify-current": cmd_verify_current,
         "dry-run": cmd_dry_run,

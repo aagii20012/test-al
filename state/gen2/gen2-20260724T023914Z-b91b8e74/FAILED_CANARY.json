@@ -1,0 +1,67 @@
+{
+  "record_type": "gen2_terminal_failure_record",
+  "append_only": true,
+  "immutable_note": "This record is append-only and terminal. It must never be edited, deleted, repaired, or reused. The experiment it describes is permanently retired.",
+  "experiment_id": "gen2-20260724T023914Z-b91b8e74",
+  "generation": "gen2",
+  "schema_version": 2,
+  "gate": "L1",
+  "recorded_utc": "2026-07-24T04:04:20.056913+00:00",
+  "recorded_at_repo_head": "3fd884bc123be6b9ad2494902b6ba213fc225e49",
+
+  "terminal_status": "FAILED_CANARY",
+  "failure_class": "SOURCE_BINDING_PORTABILITY",
+  "root_cause": "The v1 source-tree binding hashed raw working-tree bytes. On Windows the checkout has CRLF line endings; on the GitHub-hosted Ubuntu runner the same tracked files check out with LF. Raw-byte hashing is line-ending-sensitive, so the source_tree_sha256 recorded at activation on Windows could never equal the hash recomputed on the Linux runner. Gen2Coordinator._verify_code_binding() therefore failed closed on every Linux canary attempt. This is a platform-dependent source-binding defect, NOT strategy drift, NOT a market-data failure, and NOT a trading/accounting failure.",
+
+  "hash_evidence": {
+    "algorithm_at_failure": "raw-byte-source-tree (v1, package-relative, no newline normalization)",
+    "windows_source_tree_sha256": "9681fdbadfa076a8ebfe64af33fe9444c3967a582854e65cbfddd01850793d41",
+    "windows_source_file_count": 57,
+    "linux_recomputed_source_tree_sha256": "578dfa75",
+    "linux_hash_note": "The Linux-runner recomputation observed during the failed canary began with 578dfa75 and did not match the Windows-bound value above. It is recorded here as the diagnostic value observed on the GitHub Ubuntu runner; it cannot be independently re-derived on the Windows dev machine because that is precisely the portability defect being retired.",
+    "mismatch": true
+  },
+
+  "provenance_commits": {
+    "implementation_commit": "9b751bfc1b9c4d3f94b4527eebc57a7fb028e17a",
+    "activation_state_commit": "4086e77c16b55383abaa2c3af3867b146f0c9825",
+    "activation_provenance_record_commit": "3fd884bc123be6b9ad2494902b6ba213fc225e49",
+    "activation_state_commit_ci_run_id": 30062606171,
+    "activation_state_commit_ci_conclusion": "success"
+  },
+
+  "failed_canary_execution": {
+    "workflow": ".github/workflows/gen2-coordinator.yml",
+    "trigger": "workflow_dispatch (manual, Gate-L1 one-shot)",
+    "failed_workflow_run_id": "not_recorded_locally",
+    "failed_workflow_job_id": "not_recorded_locally",
+    "id_capture_note": "The failing canary was a manual workflow_dispatch of gen2-coordinator.yml. Its GitHub Actions run/job IDs were not persisted into any committed artifact at the time, and the gh CLI is not installed in this environment, so they cannot be filled in retroactively from local state. They are recorded as not_recorded_locally rather than fabricated. The remediation adds a canonical, portable source hash so future canaries cannot fail this way; the fresh experiment's canary run ID WILL be persisted into its own activation record."
+  },
+
+  "no_side_effects_confirmation": {
+    "shared_boundary_selected": false,
+    "market_data_fetched_for_a_tick": false,
+    "checkpoint_created": false,
+    "current_pointer_created": false,
+    "any_bot_advanced": false,
+    "orders_placed": false,
+    "credentials_accessed": false,
+    "verified_by": "Direct inspection of state/gen2/gen2-20260724T023914Z-b91b8e74/: checkpoints/ is empty, no CURRENT file exists, and the pre-tick provenance snapshot in preflight/ was captured at the activation decision (not a tick). The canary failed closed inside _verify_code_binding() BEFORE any market boundary was chosen or any bot state was mutated. checkpoint_published_at_this_record in ACTIVATION_RECORD.json is false.",
+    "note_on_preflight_provenance": "preflight/provenance-12b863eb54d010a9.json is the activation-decision keyless Coinbase provenance snapshot, not a trading tick. No candle was ever committed to a bot as a decision boundary."
+  },
+
+  "generation_1_untouched": true,
+
+  "permanent_refusal": {
+    "statement": "This experiment id can never tick again and can never be reactivated.",
+    "enforced_by": [
+      "algotrading/gen2/experiment.py: RETIRED_EXPERIMENT_IDS contains this id.",
+      "algotrading/gen2/coordinator.py run_tick(): raises NotActivatedError if the manifest id is in RETIRED_EXPERIMENT_IDS.",
+      "algotrading/gen2/coordinator.py run_tick(): raises NotActivatedError if manifest.status is in Status.TERMINAL (FAILED_CANARY is terminal).",
+      "algotrading/gen2/coordinator.py set_status(): raises NotActivatedError on any attempt to set status ACTIVE for a retired id.",
+      "manifest.json status transitioned ACTIVE -> FAILED_CANARY (terminal)."
+    ]
+  },
+
+  "remediation_pointer": "A canonical, newline-normalized source hash (python-source-canonical-sha256 v2) plus a declared source inventory replaces the v1 raw-byte binding. A NEW experiment id (never this one) will be prepared and bound to the v2 hash. See algotrading/gen2/source_hash.py and algotrading/gen2/source_inventory.json."
+}

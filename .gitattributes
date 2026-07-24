@@ -1,0 +1,11 @@
+# Gen2 source-binding portability (Message A §3).
+# The Gen2 experiment binding hashes source files. To keep the working-tree
+# bytes identical on every platform (Windows dev checkout vs GitHub Ubuntu
+# runner), the file types that participate in binding/verification are forced
+# to LF in the working tree. This is a belt; the canonical newline-normalizing
+# source hash (python-source-canonical-sha256 v2) is the suspenders and remains
+# required on its own — policy here is NOT sufficient by itself.
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

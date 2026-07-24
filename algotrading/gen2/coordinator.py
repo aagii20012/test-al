@@ -269,18 +269,42 @@ class Gen2Coordinator:
         if not self.verify_code:
             return
         tree = exp.source_tree_hash()
-        bound = self.manifest.code.get("source_tree_sha256")
+        code = self.manifest.code
+        # Algorithm identity FIRST: a manifest bound under v1 (raw-byte hashing,
+        # no algorithm marker) or any other algorithm/version must never verify
+        # against the v2 canonical hash. tree.get(...) is None for the drift-test
+        # monkeypatch, which correctly mismatches the manifest's recorded values.
+        if (tree.get("algorithm") != code.get("source_hash_algorithm")
+                or tree.get("version") != code.get("source_hash_version")):
+            raise state_schema.IncompatibleStateError(
+                "Source-hash algorithm/version mismatch: running code computes "
+                f"{tree.get('algorithm')!r} v{tree.get('version')!r} but the "
+                f"experiment is bound to {code.get('source_hash_algorithm')!r} "
+                f"v{code.get('source_hash_version')!r}. Refusing to verify a "
+                "binding produced by a different hashing algorithm.")
+        bound = code.get("source_tree_sha256")
         if tree["sha256"] != bound:
             raise state_schema.IncompatibleStateError(
                 "Code drift: the running algotrading source tree hashes to "
                 f"{tree['sha256']!r} but the experiment is bound to {bound!r}. "
                 "Refusing to continue an experiment under changed code.")
+        bound_inv = code.get("source_inventory_sha256")
+        if tree.get("inventory_sha256") != bound_inv:
+            raise state_schema.IncompatibleStateError(
+                "Source inventory mismatch: running inventory hashes to "
+                f"{tree.get('inventory_sha256')!r} but the experiment is bound "
+                f"to {bound_inv!r}. The declared set of source files changed.")
 
     def set_status(self, new_status: str, *, approved: bool = False) -> None:
         """Persist a lifecycle transition (audited). ACTIVE requires approval."""
         if new_status not in Status.ALL:
             raise Gen2Error(f"Unknown status {new_status!r}")
         m = self.load_manifest_from_disk()
+        if (new_status == Status.ACTIVE
+                and m.experiment_id in exp.RETIRED_EXPERIMENT_IDS):
+            raise NotActivatedError(
+                f"Experiment {m.experiment_id!r} is permanently retired and can "
+                "never be reactivated; mint a fresh experiment id instead.")
         if new_status == Status.ACTIVE:
             if not approved:
                 raise NotActivatedError(
@@ -506,10 +530,21 @@ class Gen2Coordinator:
         # 0. Preconditions (raise loudly — never silently no-op a live tick).
         manifest = self.load_manifest_from_disk()
         self.manifest = manifest
-        if dry_run:
-            if manifest.status == Status.CLOSED:
-                raise NotActivatedError("Experiment is CLOSED; no ticks allowed.")
-        else:
+        # A permanently-retired experiment refuses EVERY tick, no matter what
+        # status is on disk (belt-and-suspenders over the TERMINAL check below).
+        if manifest.experiment_id in exp.RETIRED_EXPERIMENT_IDS:
+            raise NotActivatedError(
+                f"Experiment {manifest.experiment_id!r} is permanently retired "
+                "(failed Gate-L1 canary — SOURCE_BINDING_PORTABILITY). It refuses "
+                "all ticks, dry or live, forever. Mint a fresh experiment id "
+                "instead; see its FAILED_CANARY record.")
+        # A terminal status (FAILED_CANARY / CLOSED) also refuses every tick.
+        if manifest.status in Status.TERMINAL:
+            raise NotActivatedError(
+                f"Experiment {manifest.experiment_id!r} status "
+                f"{manifest.status!r} is terminal; no ticks (dry or live) are "
+                "allowed.")
+        if not dry_run:
             if manifest.status != Status.ACTIVE:
                 raise NotActivatedError(
                     f"Live tick requires status ACTIVE; experiment is "

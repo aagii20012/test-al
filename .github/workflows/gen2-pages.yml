@@ -1,0 +1,105 @@
+# =====================================================================
+# Generation-2 public dashboard — GitHub Pages (READ-ONLY renderer).
+#
+# This workflow is the ONLY thing that deploys the public scoreboard, and it is
+# deliberately, provably NOT a trading path:
+#
+#   * It runs `python -m algotrading.gen2 build-pages`, which reads ONLY the
+#     committed manifest + the verified CURRENT checkpoint and writes a static
+#     HTML file. It fetches NO market data, places NO orders, and never calls the
+#     coordinator's tick path. (The dashboard module imports no live-fetch code
+#     for rendering.)
+#   * It has NO `contents: write`. It cannot commit, push, or mutate state. The
+#     only things it can write are the Pages artifact + deployment.
+#   * Trading (the coordinator) and publishing (this workflow) are separate
+#     workflows on purpose: a dashboard build can never advance a bot, and a
+#     coordinator tick never needs Pages permissions.
+#
+# Fail-closed: if `build-pages` cannot verify CURRENT for the selected experiment
+# it exits non-zero, the build job fails, the deploy job (which `needs` it) is
+# skipped, and the last successfully-deployed site stays live. A corrupt store is
+# therefore never published over a good one.
+#
+# ONE-TIME REPO SETUP (manual, in GitHub repo Settings): Settings -> Pages ->
+# "Build and deployment" -> Source = "GitHub Actions". No branch is served
+# directly; this workflow is the source. See docs/gen2-reproducibility.md.
+# =====================================================================
+name: gen2-pages
+
+on:
+  # Manual deploy/redeploy — used for the Gate-L1 canary and for the recovery
+  # runbook's "redeploy last-good dashboard" step.
+  workflow_dispatch: {}
+  # Auto-refresh when committed Gen2 state or the dashboard renderer changes.
+  # NOTE: coordinator ticks commit with "[skip ci]", which suppresses ALL Actions
+  # for that commit, so a live tick does NOT auto-trigger this build. During the
+  # manual-canary phase the dashboard is (re)deployed via workflow_dispatch. A
+  # `workflow_run` trigger keyed to the coordinator is deferred to Gate L2.
+  push:
+    branches: [main]
+    paths:
+      - "state/gen2/**"
+      - "algotrading/gen2/dashboard.py"
+      - "algotrading/gen2/__main__.py"
+      - ".github/workflows/gen2-pages.yml"
+
+# Least privilege for the official GitHub Pages deployment method.
+#   contents: read   -> check out the repo (no write; cannot mutate state)
+#   pages: write     -> REQUIRED by actions/deploy-pages to publish the site
+#   id-token: write  -> REQUIRED by actions/deploy-pages for its OIDC handshake
+# (Message B §3: id-token is used ONLY because the official Pages deploy action
+# requires it; no other elevated scope is granted.)
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one deployment at a time; queued runs collapse to the latest, but an
+# in-flight production deploy is allowed to finish (never cancelled).
+concurrency:
+  group: gen2-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build the static dashboard from committed state (read-only)
+        # Renders the single deployable experiment, or an honest placeholder page
+        # when only a retired/terminal experiment exists. Fails closed on a
+        # corrupt/unverifiable CURRENT.
+        run: |
+          python -m algotrading.gen2 build-pages --out site
+          test -f site/index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the static site as a Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

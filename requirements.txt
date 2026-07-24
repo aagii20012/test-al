@@ -1,14 +1,24 @@
-# Core
-numpy>=1.24
-pandas>=2.0
-PyYAML>=6.0
+# Gen2 GitHub-deployability requirement (Message B §2): pinned dependency
+# metadata so a clean GitHub-hosted Ubuntu runner resolves the SAME versions
+# that were used to build, test, and bind the experiment. Pins are exact (==)
+# to make the runner reproducible; do not loosen without re-running CI and
+# re-recording the canonical source hash.
+#
+# These versions match the audited local toolchain. All have manylinux wheels,
+# so `pip install -r requirements.txt` on ubuntu-latest needs no build tools.
 
-# Exchange connectivity (optional for offline/synthetic backtests)
-python-binance>=1.0.19
-requests>=2.28        # public price source for cloud paper-simulation
+# Core
+numpy==2.2.6
+pandas==2.3.3
+PyYAML==6.0.3
+
+# Exchange connectivity. python-binance is only used by legacy Gen1/offline
+# paths; the Gen2 coordinator uses the keyless Coinbase public API via requests.
+python-binance==1.0.37
+requests==2.34.2        # keyless public price source for cloud paper-simulation
 
 # CLI / reporting
-tabulate>=0.9
+tabulate==0.10.0
 
 # Testing
-pytest>=7.4
+pytest==8.4.2

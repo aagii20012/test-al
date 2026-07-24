@@ -11,10 +11,12 @@
 # only after the L1 canary passes every validation exactly.
 #
 # Activation-safety guarantees (proved by construction + by the coordinator):
-#   * ONE coordinator per experiment. `resolve-experiment` reads the single
-#     committed manifest, FAILS if zero or >1 exist, and FAILS if the resolved id
-#     is not the expected launch id. Its id keys the tick job's concurrency group,
-#     so two runs of the same experiment never execute concurrently.
+#   * ONE coordinator per experiment. `resolve-experiment` reads every committed
+#     manifest, DISCARDS terminal (FAILED_CANARY/CLOSED) and permanently-retired
+#     experiments, and requires EXACTLY ONE eligible experiment to remain — it
+#     FAILS closed on zero or >1, and can never select the retired canary. Its id
+#     keys the tick job's concurrency group, so two runs of the same experiment
+#     never execute concurrently.
 #   * `verify-current` re-verifies CURRENT + every artifact hash BEFORE computing;
 #     the coordinator re-verifies on load; a corrupt pointer fails closed.
 #   * A stale/slow run cannot publish over a newer one: monotonic CURRENT +
@@ -39,8 +41,9 @@ permissions:
 
 jobs:
   # -------------------------------------------------------------------
-  # Resolve THE single active experiment from committed state (authoritative,
-  # non-spoofable) and assert it is the expected launch id.
+  # Resolve THE single eligible experiment from committed state (authoritative,
+  # non-spoofable). Terminal and permanently-retired experiments are discarded so
+  # the retired canary can coexist with a fresh experiment yet never be ticked.
   # -------------------------------------------------------------------
   resolve-experiment:
     runs-on: ubuntu-latest
@@ -56,27 +59,37 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Resolve the single Generation-2 experiment id + status
+      - name: Resolve the single eligible Generation-2 experiment id + status
         id: resolve
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import glob, json, os, sys
-          EXPECTED = "gen2-20260724T023914Z-b91b8e74"
+          # Mirror algotrading/gen2/experiment.py. Kept inline so this safety-
+          # critical resolver has ZERO import dependencies (no pip install needed).
+          TERMINAL = {"FAILED_CANARY", "CLOSED"}
+          RETIRED = {"gen2-20260724T023914Z-b91b8e74"}
           paths = sorted(glob.glob(os.path.join("state", "gen2", "*", "manifest.json")))
-          if len(paths) != 1:
+          eligible = []
+          for p in paths:
+              with open(p, "r", encoding="utf-8") as fh:
+                  m = json.load(fh)
+              exp_id, status = m.get("experiment_id"), m.get("status")
+              if exp_id in RETIRED or status in TERMINAL:
+                  sys.stderr.write(
+                      f"skip ineligible experiment {exp_id!r} (status={status!r})\n")
+                  continue
+              eligible.append((exp_id, status))
+          if len(eligible) != 1:
               sys.stderr.write(
-                  f"Expected exactly ONE committed Generation-2 experiment, found "
-                  f"{len(paths)}: {paths}. One coordinator per experiment.\n")
+                  f"Expected exactly ONE eligible Generation-2 experiment, found "
+                  f"{len(eligible)}: {eligible}. Refusing to tick.\n")
               sys.exit(1)
-          with open(paths[0], "r", encoding="utf-8") as fh:
-              m = json.load(fh)
-          if m["experiment_id"] != EXPECTED:
-              sys.stderr.write(
-                  f"Resolved experiment id {m['experiment_id']!r} != expected launch id "
-                  f"{EXPECTED!r}. Refusing to tick an unexpected experiment.\n")
+          exp_id, status = eligible[0]
+          if exp_id in RETIRED:                      # defence in depth
+              sys.stderr.write(f"Refusing retired experiment {exp_id!r}.\n")
               sys.exit(1)
-          print(f"experiment_id={m['experiment_id']}")
-          print(f"status={m['status']}")
+          print(f"experiment_id={exp_id}")
+          print(f"status={status}")
           PY
 
   # -------------------------------------------------------------------
