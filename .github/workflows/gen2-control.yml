@@ -2,18 +2,27 @@
 # Generation-2 MANUAL control console (GATE L1 — human-dispatched only).
 #
 # One safe, GitHub-web-only operator surface for a single Generation-2 experiment.
-# It does exactly four things, chosen from a closed vocabulary, and nothing else:
+# It does exactly five things, chosen from a closed vocabulary, and nothing else:
 #
-#   activate  PREPARED -> ACTIVE. Before flipping, the engine runs the STRICT
-#             keyless Coinbase public provenance gate (its own real request — an
-#             injected fetch is refused) AND the source-binding / code-drift check.
-#             It STOPS (no flip, no commit) if either fails.
-#   canary    Run exactly ONE live coordinator tick on an ACTIVE experiment. It
-#             publishes AT MOST one new shared boundary; a second dispatch on the
-#             same boundary returns ALREADY_PUBLISHED and changes nothing.
-#   verify    READ-ONLY. Resolve CURRENT and re-verify the checkpoint manifest +
-#             every artifact hash. Fails closed (job red) on any integrity defect.
-#   pause     ACTIVE -> PAUSED. The stop button; refuses anything not ACTIVE.
+#   activate        PREPARED -> ACTIVE. Before flipping, the engine runs the STRICT
+#                   keyless Coinbase public provenance gate (its own real request —
+#                   an injected fetch is refused) AND the source-binding / code-drift
+#                   check. It STOPS (no flip, no commit) if either fails.
+#   canary          Run exactly ONE live coordinator tick on an ACTIVE experiment.
+#                   It publishes AT MOST one new shared boundary; a second dispatch
+#                   on the same boundary returns ALREADY_PUBLISHED and changes nothing.
+#   replay-current  READ-ONLY, DETERMINISTIC idempotency proof. Re-runs the ONE
+#                   boundary CURRENT already published, feeding the coordinator's
+#                   normal tick path the STORED immutable snapshot (never the live
+#                   window), requires ALREADY_PUBLISHED, and asserts the whole
+#                   experiment directory is byte-identical before/after. This is the
+#                   safe replacement for "dispatch canary twice and hope no new
+#                   candle appeared": it cannot ever advance state or select a newer
+#                   boundary. A `git status --porcelain` gate fails the job red if a
+#                   single byte changed.
+#   verify          READ-ONLY. Resolve CURRENT and re-verify the checkpoint manifest
+#                   + every artifact hash. Fails closed (job red) on any defect.
+#   pause           ACTIVE -> PAUSED. The stop button; refuses anything not ACTIVE.
 #
 # Safety by construction:
 #   * `workflow_dispatch` ONLY. There is NO `schedule`, NO `repository_dispatch`,
@@ -53,6 +62,7 @@ on:
         options:
           - activate
           - canary
+          - replay-current
           - verify
           - pause
       experiment_id:
@@ -134,13 +144,70 @@ jobs:
           python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current
 
   # -------------------------------------------------------------------
+  # READ-ONLY deterministic replay proof. Re-runs the boundary CURRENT already
+  # published from the STORED snapshot, requires ALREADY_PUBLISHED, and fails the
+  # job red if the working tree is not perfectly clean afterwards. contents: read
+  # only — it structurally cannot mutate, publish, or push.
+  # -------------------------------------------------------------------
+  replay:
+    needs: guard
+    if: inputs.action == 'replay-current'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ACTION: ${{ inputs.action }}
+      EXPERIMENT_ID: ${{ inputs.experiment_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Re-assert the legality guard (read-only, defence in depth)
+        run: |
+          python tools/gen2_control.py guard --action "$ACTION" \
+            --experiment-id "$EXPERIMENT_ID"
+
+      - name: Replay CURRENT deterministically (must be ALREADY_PUBLISHED, no-op)
+        # Feeds the coordinator the STORED immutable snapshot for the published
+        # boundary, so the live market window can never select a newer candle. The
+        # helper itself asserts byte-identity of the whole experiment directory and
+        # exits non-zero (job red) if anything changed or it did not land on the
+        # exact published boundary.
+        run: |
+          python tools/gen2_control.py replay-current --experiment-id "$EXPERIMENT_ID"
+
+      - name: Assert the working tree is byte-clean (a replay must change nothing)
+        # Independent, cross-cutting cleanliness gate: even if the helper's internal
+        # assertions were somehow bypassed, a single dirtied path here fails the job.
+        run: |
+          set -euo pipefail
+          DIRTY="$(git status --porcelain)"
+          if [ -n "$DIRTY" ]; then
+            echo "::error::replay-current dirtied the working tree (it must be a"
+            echo "::error::perfectly inert no-op). Offending paths:"
+            echo "$DIRTY"
+            exit 1
+          fi
+          echo "Working tree clean after replay — CURRENT boundary is a fixed point."
+
+  # -------------------------------------------------------------------
   # The ONLY writing job, and only for activate/canary/pause. It re-asserts the
   # guard, performs exactly the requested action, then persists ONLY this
   # experiment's directory with a rebase-then-revalidate publish (no force).
   # -------------------------------------------------------------------
   mutate:
     needs: guard
-    if: inputs.action != 'verify'
+    if: inputs.action != 'verify' && inputs.action != 'replay-current'
     runs-on: ubuntu-latest
     permissions:
       contents: write

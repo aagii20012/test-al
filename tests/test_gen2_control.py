@@ -2,9 +2,10 @@
 
 Covers three surfaces added for the GitHub-web-only operator flow:
 
-  1. tools/gen2_control.py    — the read-only ``guard`` legality gate and the
-     ACTIVE->PAUSED ``pause`` transition (the only lifecycle move the engine CLI
-     does not already expose).
+  1. tools/gen2_control.py    — the read-only ``guard`` legality gate, the
+     deterministic read-only ``replay-current`` idempotency proof, and the
+     ACTIVE->PAUSED ``pause`` transition (the lifecycle moves the engine CLI does
+     not already expose).
   2. .github/workflows/gen2-control.yml — static safety assertions on the manual-
      control workflow (dispatch-only, least-privilege, scoped commit, no force,
      input passed via env not interpolated, cron disabled).
@@ -80,6 +81,10 @@ _MATRIX = [
     ("canary", Status.ACTIVE, True),
     ("canary", Status.PREPARED, False),
     ("canary", Status.PAUSED, False),
+    ("replay-current", Status.ACTIVE, True),
+    ("replay-current", Status.PREPARED, False),
+    ("replay-current", Status.PAUSED, False),
+    ("replay-current", Status.FAILED, False),
     ("pause", Status.ACTIVE, True),
     ("pause", Status.PREPARED, False),
     ("pause", Status.PAUSED, False),
@@ -255,7 +260,7 @@ def test_workflow_is_dispatch_only_no_cron(workflow):
 def test_workflow_action_input_is_closed_set(workflow):
     on = _on_block(workflow[1])
     opts = on["workflow_dispatch"]["inputs"]["action"]["options"]
-    assert opts == ["activate", "canary", "verify", "pause"]
+    assert opts == ["activate", "canary", "replay-current", "verify", "pause"]
     assert on["workflow_dispatch"]["inputs"]["action"]["type"] == "choice"
     assert "experiment_id" in on["workflow_dispatch"]["inputs"]
 
@@ -275,6 +280,8 @@ def test_workflow_only_mutate_job_can_write(workflow):
     jobs = doc["jobs"]
     assert jobs["guard"]["permissions"] == {"contents": "read"}
     assert jobs["verify"]["permissions"] == {"contents": "read"}
+    # replay-current is a read-only proof: it must never be granted write access.
+    assert jobs["replay"]["permissions"] == {"contents": "read"}
     assert jobs["mutate"]["permissions"] == {"contents": "write"}
 
 
@@ -282,10 +289,14 @@ def test_workflow_verify_and_mutate_need_guard(workflow):
     _, doc = workflow
     jobs = doc["jobs"]
     assert jobs["verify"]["needs"] == "guard"
+    assert jobs["replay"]["needs"] == "guard"
     assert jobs["mutate"]["needs"] == "guard"
     # The read and write paths are mutually exclusive on the action.
     assert "verify" in jobs["verify"]["if"]
+    assert jobs["replay"]["if"] == "inputs.action == 'replay-current'"
+    # mutate must exclude BOTH read-only actions, so replay-current never writes.
     assert "verify" in jobs["mutate"]["if"]
+    assert "replay-current" in jobs["mutate"]["if"]
 
 
 def test_workflow_passes_input_via_env_not_shell_interpolation(workflow):
