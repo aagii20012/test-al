@@ -1,0 +1,157 @@
+{
+  "bot_id": "momentum_BTCUSDT",
+  "cash_now": 14993.829970439769,
+  "dry_run": false,
+  "equity_now": 9996.022082993648,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "last_bar_ts": 1784970000000,
+  "last_price": 63928.53,
+  "portfolio": {
+    "avg_price": {
+      "BTCUSDT": 63943.778686
+    },
+    "cash": 14993.829970439769,
+    "equity_curve": [
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T09:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T13:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T14:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T15:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T17:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T19:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T21:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T23:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-25T02:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-25T05:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 14993.94393589495,
+        "dt": "2026-07-25T07:00:00+00:00",
+        "equity": 9995.128333369674,
+        "market_value": -4998.8156025252765
+      },
+      {
+        "cash": 14993.887023041223,
+        "dt": "2026-07-25T08:00:00+00:00",
+        "equity": 10008.321036622627,
+        "market_value": -4985.565986418597
+      },
+      {
+        "cash": 14993.829970439769,
+        "dt": "2026-07-25T09:00:00+00:00",
+        "equity": 9996.022082993648,
+        "market_value": -4997.807887446122
+      }
+    ],
+    "fill_seq": 1,
+    "fills": [
+      {
+        "commission": 4.999,
+        "dt": "2026-07-25T05:00:00+00:00",
+        "exchange": "SIM",
+        "fill_id": 0,
+        "new_qty": -0.07817805113688868,
+        "prev_qty": 0.0,
+        "price": 63943.778686,
+        "qty": 0.07817805113688868,
+        "side": "SELL",
+        "slippage_cost": 1.0000000000001468,
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "initial_capital": 10000.0,
+    "legs": [
+      {
+        "dt": "2026-07-25T05:00:00+00:00",
+        "entry_price": 63943.778686,
+        "exit_price": null,
+        "fill_id": 0,
+        "leg": "OPEN",
+        "qty": 0.07817805113688868,
+        "realized_pnl": 0.0,
+        "side": "SELL",
+        "symbol": "BTCUSDT"
+      }
+    ],
+    "positions": {
+      "BTCUSDT": -0.07817805113688868
+    },
+    "realized_pnl": 0.0,
+    "total_commission": 4.999,
+    "total_financing": 0.1710295602327625,
+    "total_slippage": 1.0000000000001468,
+    "trade_log": []
+  },
+  "risk": {
+    "day": "2026-07-25",
+    "day_start_equity": 10000.0,
+    "halted_permanent": false,
+    "halted_today": false,
+    "open": {
+      "BTCUSDT": {
+        "dir": -1,
+        "entry": 63956.57,
+        "extreme": 63956.57,
+        "stop": 64350.684285714284,
+        "take": null
+      }
+    },
+    "peak_equity": 10008.321036622627
+  },
+  "schema_version": 2,
+  "strategy": {
+    "pos": {
+      "BTCUSDT": -1
+    }
+  },
+  "updated_utc": "2026-07-25T10:01:37.701598+00:00"
+}
