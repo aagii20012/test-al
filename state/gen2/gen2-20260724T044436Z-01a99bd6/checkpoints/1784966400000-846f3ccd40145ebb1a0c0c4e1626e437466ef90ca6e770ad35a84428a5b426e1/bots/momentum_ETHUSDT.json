@@ -1,0 +1,151 @@
+{
+  "bot_id": "momentum_ETHUSDT",
+  "cash_now": 13965.447249350827,
+  "dry_run": false,
+  "equity_now": 10004.897207221813,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "last_bar_ts": 1784966400000,
+  "last_price": 1852.08,
+  "portfolio": {
+    "avg_price": {
+      "ETHUSDT": 1856.2686720000002
+    },
+    "cash": 13965.447249350827,
+    "equity_curve": [
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T09:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T13:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T14:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T15:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T17:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T19:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T21:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-24T23:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-25T02:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 10000.0,
+        "dt": "2026-07-25T05:00:00+00:00",
+        "equity": 10000.0,
+        "market_value": 0
+      },
+      {
+        "cash": 13965.4924611093,
+        "dt": "2026-07-25T07:00:00+00:00",
+        "equity": 9999.788794082046,
+        "market_value": -3965.703667027254
+      },
+      {
+        "cash": 13965.447249350827,
+        "dt": "2026-07-25T08:00:00+00:00",
+        "equity": 10004.897207221813,
+        "market_value": -3960.550042129015
+      }
+    ],
+    "fill_seq": 1,
+    "fills": [
+      {
+        "commission": 3.9695072389380437,
+        "dt": "2026-07-25T05:00:00+00:00",
+        "exchange": "SIM",
+        "fill_id": 0,
+        "new_qty": -2.1384335677341233,
+        "prev_qty": 0.0,
+        "price": 1856.2686720000002,
+        "qty": 2.1384335677341233,
+        "side": "SELL",
+        "slippage_cost": 0.7940602598394666,
+        "symbol": "ETHUSDT"
+      }
+    ],
+    "initial_capital": 10000.0,
+    "legs": [
+      {
+        "dt": "2026-07-25T05:00:00+00:00",
+        "entry_price": 1856.2686720000002,
+        "exit_price": null,
+        "fill_id": 0,
+        "leg": "OPEN",
+        "qty": 2.1384335677341233,
+        "realized_pnl": 0.0,
+        "side": "SELL",
+        "symbol": "ETHUSDT"
+      }
+    ],
+    "positions": {
+      "ETHUSDT": -2.1384335677341233
+    },
+    "realized_pnl": 0.0,
+    "total_commission": 3.9695072389380437,
+    "total_financing": 0.09048234827803961,
+    "total_slippage": 0.7940602598394666,
+    "trade_log": []
+  },
+  "risk": {
+    "day": "2026-07-25",
+    "day_start_equity": 10000.0,
+    "halted_permanent": false,
+    "halted_today": false,
+    "open": {
+      "ETHUSDT": {
+        "dir": -1,
+        "entry": 1856.64,
+        "extreme": 1856.64,
+        "stop": 1873.4435714285714,
+        "take": null
+      }
+    },
+    "peak_equity": 10004.897207221813
+  },
+  "schema_version": 2,
+  "strategy": {
+    "pos": {
+      "ETHUSDT": -1
+    }
+  },
+  "updated_utc": "2026-07-25T09:01:35.353521+00:00"
+}
