@@ -1,0 +1,39 @@
+{
+  "artifacts": {
+    "audit/tick.json": "d3a63ecefe3a39cd3d84e716699fe0a373573b08118cea3e984f79b4b294c12c",
+    "bots/bollinger_BTCUSDT.json": "31c47bb2f1a3ec529ce3f9ae6a29ea6eec5b26474ba070069c72be8eff607913",
+    "bots/bollinger_ETHUSDT.json": "ea82751a089999079f30e600f546f46aca6430f718eea385acabe5b21e78b040",
+    "bots/donchian_BTCUSDT.json": "e944d663e597915c27b2f67199add50b198083fdd495f7a8a677c809b54c7a00",
+    "bots/donchian_ETHUSDT.json": "caad316c6f25625afc4b1f614073c215501817a0e85f51e2f75b4ecfc2441e2a",
+    "bots/momentum_BTCUSDT.json": "1d61aebd3f30ace1c63789feebd261f346e0b4eaa429a8a4f368a087a11a45b4",
+    "bots/momentum_ETHUSDT.json": "60d0da99a88d6f8429a38b7327b39d08a6499d45e4dcb965710081490cc44d14",
+    "bots/rsi_BTCUSDT.json": "92eeaf61638921971516795cd7b44abfa12eac19868f917df3503180361db855",
+    "bots/rsi_ETHUSDT.json": "981a29131642d0110c90d1cfd11a482db720888797f0d1356176f3d751371d78",
+    "market_snapshot.json": "31e55109b598cb9c28ace7cfa664655a8fcc3ce3dc1f255b4bd189f0fd8cbe52",
+    "run_status.json": "5269f8ba2c297aed23d1bfe4b96cc27f839dc92e40912a6e9727d4dd397affc6"
+  },
+  "boundary_epoch": 1786316400000,
+  "checkpoint": "1786316400000-35c02ecdafb3ad26cadf6bb521437cc21d0123300da79b27be35ac4049156218",
+  "code": {
+    "implementation_commit": "977f0ebe9eebf3d569bf87a02ca9d712aa4c911b",
+    "source_file_count": 58,
+    "source_hash_algorithm": "python-source-canonical-sha256",
+    "source_hash_version": 2,
+    "source_inventory_sha256": "c8585457a8c0ab2ee571c03bd75248e640d929d9212ba7258d486d3747e8b283",
+    "source_tree_sha256": "507bae775c0d533dd588555d4355c1fb1e6f698e1329f1a7ff06e239e96c0699"
+  },
+  "cost_model": {
+    "commission_pct": 0.001,
+    "fill_at": "close",
+    "min_notional": 10.0,
+    "slippage_bps": 2.0
+  },
+  "created_utc": "2026-08-10T00:21:11.167498+00:00",
+  "dry_run": false,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "idempotency_key": "gen2-20260724T044436Z-01a99bd6:1786316400000",
+  "prior_checkpoint": "1786312800000-253c9bc529ed4b511e7d25e4c7679fc281888dd82a0c873b1709dd88799d772f",
+  "schema_version": 2,
+  "snapshot_sha256": "35c02ecdafb3ad26cadf6bb521437cc21d0123300da79b27be35ac4049156218"
+}
