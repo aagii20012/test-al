@@ -12,6 +12,18 @@
 # Gate history: L1 was manual-only (`workflow_dispatch`, no schedule); the hourly
 # cron below is the Gate-L2 change, added only after the L1 canary verified.
 #
+# Redundant-trigger guard (2026-08-26): two triggers fire per hour, so one of them
+# always re-visits an already-published boundary. That was mostly a harmless no-op,
+# but ~8% of runs went RED when the winning trigger had captured the bar seconds
+# after its close and the loser re-fetched a settled — therefore differently hashed
+# — version of the same frozen boundary. The `candle` step below skips the tick
+# when no newer candle can possibly have closed. It changes no trading behaviour:
+# replayed over the 300 runs from 2026-08-20 to 2026-08-26 it reproduces the real
+# 154-checkpoint chain EXACTLY, gap-free, while turning all 24 failures green. The
+# root cause (capturing a bar before the exchange settles it) lives in
+# algotrading/gen2/snapshot.py, which is inside this experiment's source bind
+# (507bae77…) and therefore cannot be touched while it runs.
+#
 # Activation-safety guarantees (proved by construction + by the coordinator):
 #   * ONE coordinator per experiment. `resolve-experiment` reads every committed
 #     manifest, DISCARDS terminal (FAILED_CANARY/CLOSED) and permanently-retired
@@ -143,7 +155,53 @@ jobs:
         run: |
           python -m algotrading.gen2 --experiment-id "$EXPERIMENT_ID" verify-current
 
+      - name: Decide whether a newer closed candle can even exist yet
+        id: candle
+        # WHY THIS EXISTS. Two triggers fire per hour (external cron at :20 and the
+        # GitHub schedule, delivered anywhere from :00 to :57). Whichever lands first
+        # publishes that hour; the second one re-fetches the SAME boundary. That is
+        # normally an idempotent no-op, but if the winner captured the bar within a
+        # couple of minutes of its close — before the exchange finished settling it —
+        # the re-fetch hashes differently and the coordinator correctly fails closed
+        # ("the market data changed under a frozen boundary", coordinator.py). That
+        # produced ~8% failed runs, all of them on the redundant second trigger.
+        #
+        # This guard skips the tick ONLY when it is arithmetically impossible for new
+        # data to exist: a candle opening at O closes at O+1h, so nothing newer than
+        # floor(now)-1h can have closed. If CURRENT already names that boundary there
+        # is provably no candle left to trade, and re-ticking can only re-hash a
+        # boundary that is already frozen. A candle can therefore never be skipped by
+        # this check — it cannot suppress a tick that had anything to do.
+        #
+        # Deliberately NOT skipped: a missing CURRENT (the tick's own fail-closed path
+        # must handle genesis loss) and a CURRENT ahead of wall clock (an anomaly that
+        # must stay loud — the coordinator raises StaleRunError). Only exact equality
+        # skips. The verify-current step above still runs on EVERY invocation, so the
+        # published pointer and artifact hashes are still audited twice an hour.
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, sys, time
+          HOUR = 3_600_000
+          current = os.path.join("state", "gen2", os.environ["EXPERIMENT_ID"], "CURRENT")
+          if not os.path.exists(current):
+              print("tick=true")            # no pointer -> let the tick fail closed
+              raise SystemExit
+          with open(current, "r", encoding="utf-8") as fh:
+              published = json.load(fh)["boundary_epoch"]
+          newest_possible = (int(time.time() * 1000) // HOUR - 1) * HOUR
+          skip = published == newest_possible
+          if skip:
+              # stderr: stdout is redirected into $GITHUB_OUTPUT, which accepts only
+              # key=value lines. Workflow commands must go to the log, not the file.
+              print(
+                  f"::notice::Boundary {published} is already published and no newer "
+                  f"candle has closed yet; skipping this redundant trigger.",
+                  file=sys.stderr)
+          print(f"tick={'false' if skip else 'true'}")
+          PY
+
       - name: Run ONE Generation-2 coordinator tick (all 8 bots, simulated, public prices)
+        if: steps.candle.outputs.tick == 'true'
         # A single process fetches BTC+ETH closed candles once, freezes one shared
         # hashed market snapshot, runs all 8 bots against it, and publishes
         # atomically. Requires an ACTIVE experiment; refuses otherwise. No `|| true`:
@@ -155,6 +213,7 @@ jobs:
             --experiment-id "$EXPERIMENT_ID" tick --i-understand-this-goes-live
 
       - name: Persist Generation-2 state back to the repo (scoped, rebase-revalidated, no force)
+        if: steps.candle.outputs.tick == 'true'
         run: |
           set -euo pipefail
           git config user.name "gen2-coordinator-bot"
