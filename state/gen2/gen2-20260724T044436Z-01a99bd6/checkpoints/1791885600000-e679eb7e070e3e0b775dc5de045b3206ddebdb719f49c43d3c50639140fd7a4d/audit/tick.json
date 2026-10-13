@@ -1,0 +1,143 @@
+{
+  "bots": [
+    {
+      "acted": true,
+      "bot_id": "momentum_BTCUSDT",
+      "cash": 9677.878913493689,
+      "equity": 9677.878913493689,
+      "last_bar_ts": 1791885600000,
+      "last_price": 83247.11,
+      "position": 0.0,
+      "realized_pnl": -123.47557774822812,
+      "recon_residual": 1.0913936421275139e-11,
+      "strategy": "momentum",
+      "symbol": "BTCUSDT",
+      "total_commission": 180.67849774929456
+    },
+    {
+      "acted": true,
+      "bot_id": "momentum_ETHUSDT",
+      "cash": 9771.887379015549,
+      "equity": 9771.887379015549,
+      "last_bar_ts": 1791885600000,
+      "last_price": 2495.93,
+      "position": 0.0,
+      "realized_pnl": -124.39028069128818,
+      "recon_residual": 7.275957614183426e-12,
+      "strategy": "momentum",
+      "symbol": "ETHUSDT",
+      "total_commission": 97.20480975678694
+    },
+    {
+      "acted": true,
+      "bot_id": "rsi_BTCUSDT",
+      "cash": 9928.244697519436,
+      "equity": 9928.244697519436,
+      "last_bar_ts": 1791885600000,
+      "last_price": 83247.11,
+      "position": 0.0,
+      "realized_pnl": 39.255918959253506,
+      "recon_residual": 7.275957614183426e-12,
+      "strategy": "rsi",
+      "symbol": "BTCUSDT",
+      "total_commission": 111.01122143982501
+    },
+    {
+      "acted": true,
+      "bot_id": "rsi_ETHUSDT",
+      "cash": 10043.46067423744,
+      "equity": 10043.46067423744,
+      "last_bar_ts": 1791885600000,
+      "last_price": 2495.93,
+      "position": 0.0,
+      "realized_pnl": 145.736829891128,
+      "recon_residual": 0.0,
+      "strategy": "rsi",
+      "symbol": "ETHUSDT",
+      "total_commission": 102.24862780063323
+    },
+    {
+      "acted": true,
+      "bot_id": "donchian_BTCUSDT",
+      "cash": 9886.823287662452,
+      "equity": 9886.823287662452,
+      "last_bar_ts": 1791885600000,
+      "last_price": 83247.11,
+      "position": 0.0,
+      "realized_pnl": 219.442290491581,
+      "recon_residual": 1.2732925824820995e-11,
+      "strategy": "donchian",
+      "symbol": "BTCUSDT",
+      "total_commission": 306.8963384649589
+    },
+    {
+      "acted": true,
+      "bot_id": "donchian_ETHUSDT",
+      "cash": 9682.288619014995,
+      "equity": 9682.288619014995,
+      "last_bar_ts": 1791885600000,
+      "last_price": 2495.93,
+      "position": 0.0,
+      "realized_pnl": -31.902254563098676,
+      "recon_residual": 5.4569682106375694e-12,
+      "strategy": "donchian",
+      "symbol": "ETHUSDT",
+      "total_commission": 273.5532521079529
+    },
+    {
+      "acted": true,
+      "bot_id": "bollinger_BTCUSDT",
+      "cash": 8609.065976096766,
+      "equity": 8609.065976096766,
+      "last_bar_ts": 1791885600000,
+      "last_price": 83247.11,
+      "position": 0.0,
+      "realized_pnl": -626.7496114441466,
+      "recon_residual": 1.2732925824820995e-11,
+      "strategy": "bollinger",
+      "symbol": "BTCUSDT",
+      "total_commission": 747.3369589502919
+    },
+    {
+      "acted": true,
+      "bot_id": "bollinger_ETHUSDT",
+      "cash": 9027.835878347407,
+      "equity": 9027.835878347407,
+      "last_bar_ts": 1791885600000,
+      "last_price": 2495.93,
+      "position": 0.0,
+      "realized_pnl": -357.81611055787636,
+      "recon_residual": 2.546585164964199e-11,
+      "strategy": "bollinger",
+      "symbol": "ETHUSDT",
+      "total_commission": 601.3078540070322
+    }
+  ],
+  "code": {
+    "implementation_commit": "977f0ebe9eebf3d569bf87a02ca9d712aa4c911b",
+    "source_file_count": 58,
+    "source_hash_algorithm": "python-source-canonical-sha256",
+    "source_hash_version": 2,
+    "source_inventory_sha256": "c8585457a8c0ab2ee571c03bd75248e640d929d9212ba7258d486d3747e8b283",
+    "source_tree_sha256": "507bae775c0d533dd588555d4355c1fb1e6f698e1329f1a7ff06e239e96c0699"
+  },
+  "cost_model": {
+    "commission_pct": 0.001,
+    "fill_at": "close",
+    "min_notional": 10.0,
+    "slippage_bps": 2.0
+  },
+  "decision_epoch_ms": 1791885600000,
+  "dry_run": false,
+  "experiment_id": "gen2-20260724T044436Z-01a99bd6",
+  "generation": "gen2",
+  "idempotency_key": "gen2-20260724T044436Z-01a99bd6:1791885600000",
+  "prior_checkpoint": "1791882000000-bcbf92b785e46c35f3bc34c5844b8a52bfb930534466873755f3d20b4bad2147",
+  "published_utc": "2026-10-13T11:21:48.020782+00:00",
+  "schema_version": 2,
+  "snapshot_missing": {
+    "BTCUSDT": 0,
+    "ETHUSDT": 0
+  },
+  "snapshot_sha256": "e679eb7e070e3e0b775dc5de045b3206ddebdb719f49c43d3c50639140fd7a4d"
+}
